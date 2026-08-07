@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "NOVYX Ingressos",
+    "slug": "novyx-ingressos",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "extra": {
+      "apiUrl": "http://localhost:3000"
+    }
+  }
+}

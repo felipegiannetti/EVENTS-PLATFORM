@@ -1,0 +1,26 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "dev": "expo start",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "lint": "eslint \"**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "expo": "~52.0.0",
+    "expo-constants": "~17.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.3"
+  },
+  "devDependencies": {
+    "@events-platform/config": "workspace:*",
+    "@types/react": "^18.3.12",
+    "babel-preset-expo": "~12.0.0",
+    "typescript": "^5.6.0"
+  }
+}

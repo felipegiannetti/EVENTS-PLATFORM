@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PapelGlobal {
+  usuario
+  admin_geral
+}
+
+enum PapelEvento {
+  owner
+  gestor
+  view
+  checkin_operator
+}
+
+enum StatusIngresso {
+  valido
+  usado
+  cancelado
+}
+
+enum TaxaPagaPor {
+  comprador
+  organizador
+}
+
+enum EscopoAcordoComercial {
+  todos_eventos
+  evento_especifico
+  proximos_n_eventos
+}
+
+model Usuario {
+  id              String      @id @default(uuid())
+  nome            String
+  email           String      @unique
+  senhaHash       String
+  papelGlobal     PapelGlobal @default(usuario)
+  asaasSubcontaId String?
+  criadoEm        DateTime    @default(now())
+  atualizadoEm    DateTime    @updatedAt
+
+  papeisAcesso      PapelAcesso[]
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]
+  acordosComerciais AcordoComercial[] @relation("AcordoComercialOrganizador")
+  acordosDefinidos  AcordoComercial[] @relation("AcordoComercialAdmin")
+
+  @@map("usuarios")
+}
+
+/// Refresh token opaco (guardado como hash) com rotação e janela deslizante — ver docs/architecture/07 e a fatia de implementação auth.
+model RefreshToken {
+  id         String    @id @default(uuid())
+  usuarioId  String
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  familyId   String
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  revogadoEm DateTime?
+  ip         String?
+  userAgent  String?
+
+  @@index([usuarioId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model PapelAcesso {
+  id        String      @id @default(uuid())
+  usuarioId String
+  usuario   Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  eventoId  String
+  evento    Evento      @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  papel     PapelEvento
+  criadoEm  DateTime    @default(now())
+
+  @@unique([usuarioId, eventoId])
+  @@map("papeis_acesso")
+}
+
+model Evento {
+  id           String      @id @default(uuid())
+  nome         String
+  data         DateTime
+  local        String
+  transferivel Boolean     @default(false)
+  taxaPagaPor  TaxaPagaPor @default(comprador)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  lotes             Lote[]
+  linksVenda        LinkVenda[]
+  papeisAcesso      PapelAcesso[]
+  ingressos         Ingresso[]
+  listaOff          ListaOff[]
+  acordosComerciais AcordoComercial[]
+
+  @@map("eventos")
+}
+
+model Lote {
+  id         String   @id @default(uuid())
+  eventoId   String
+  evento     Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  nome       String
+  preco      Decimal  @db.Decimal(10, 2)
+  quantidade Int
+  criadoEm   DateTime @default(now())
+
+  ingressos Ingresso[]
+
+  @@map("lotes")
+}
+
+model LinkVenda {
+  id       String   @id @default(uuid())
+  eventoId String
+  evento   Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  slug     String
+  origem   String
+  criadoEm DateTime @default(now())
+
+  ingressos Ingresso[]
+
+  @@unique([eventoId, slug])
+  @@map("links_venda")
+}
+
+/// version: lock otimista usado pelo módulo checkin (fatia futura) para impedir dupla validação de QR em corrida.
+model Ingresso {
+  id           String         @id @default(uuid())
+  eventoId     String
+  evento       Evento         @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  loteId       String
+  lote         Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  linkVendaId  String?
+  linkVenda    LinkVenda?     @relation(fields: [linkVendaId], references: [id])
+  status       StatusIngresso @default(valido)
+  qrToken      String         @unique
+  transferivel Boolean        @default(false)
+  version      Int            @default(0)
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  transacao Transacao?
+
+  @@map("ingressos")
+}
+
+model Transacao {
+  id         String   @id @default(uuid())
+  ingressoId String   @unique
+  ingresso   Ingresso @relation(fields: [ingressoId], references: [id], onDelete: Cascade)
+  gateway    String
+  status     String
+  valor      Decimal  @db.Decimal(10, 2)
+  metodo     String
+  criadoEm   DateTime @default(now())
+
+  @@map("transacoes")
+}
+
+model ListaOff {
+  id        String    @id @default(uuid())
+  eventoId  String
+  evento    Evento    @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  cpf       String
+  statusUso Boolean   @default(false)
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+
+  @@unique([eventoId, cpf])
+  @@map("lista_off")
+}
+
+model FeatureFlag {
+  id            String   @id @default(uuid())
+  chave         String   @unique
+  ativo         Boolean  @default(false)
+  eventosEscopo String[] @default([])
+  criadoEm      DateTime @default(now())
+
+  @@map("feature_flags")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  acao        String
+  entidade    String
+  entidadeId  String
+  dispositivo String?
+  ip          String?
+  criadoEm    DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@map("audit_logs")
+}
+
+/// Divisão dos 12% de taxa de serviço entre NOVYX e organizador — ver docs/architecture/09-modelo-financeiro.md.
+model AcordoComercial {
+  id                    String                 @id @default(uuid())
+  organizadorId         String
+  organizador           Usuario                @relation("AcordoComercialOrganizador", fields: [organizadorId], references: [id])
+  eventoId              String?
+  evento                Evento?                @relation(fields: [eventoId], references: [id])
+  percentualNovyx       Decimal                @db.Decimal(5, 2)
+  percentualOrganizador Decimal                @db.Decimal(5, 2)
+  escopo                EscopoAcordoComercial
+  eventosRestantes      Int?
+  ativo                 Boolean                @default(true)
+  definidoPorAdminId    String
+  definidoPorAdmin      Usuario                @relation("AcordoComercialAdmin", fields: [definidoPorAdminId], references: [id])
+  criadoEm              DateTime               @default(now())
+
+  @@map("acordos_comerciais")
+}

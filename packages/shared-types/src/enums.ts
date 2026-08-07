@@ -9,3 +9,6 @@ export type StatusIngresso = (typeof STATUS_INGRESSO)[number];
 
 export const TAXA_PAGA_POR = ["comprador", "organizador"] as const;
 export type TaxaPagaPor = (typeof TAXA_PAGA_POR)[number];
+
+export const TIPO_CONTA_BANCARIA = ["corrente", "poupanca"] as const;
+export type TipoContaBancaria = (typeof TIPO_CONTA_BANCARIA)[number];

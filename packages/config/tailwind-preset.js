@@ -1,41 +1,29 @@
 /**
- * Design system da Plataforma de Ingressos NOVYX — ver docs/frontend/design-system.md
- * para o racional das escolhas e as regras de uso (quando usar cada cor/variante).
+ * Design system do RARO Tickets — ver docs/frontend/design-system.md para o racional
+ * (paleta inspirada na sinalização "CAZA RARO": teal sobre creme quente) e as regras de uso.
+ *
+ * As cores são variáveis CSS (definidas em apps/web/app/globals.css para :root e .dark),
+ * não valores fixos — é isso que permite o mesmo componente (`bg-background`, `text-foreground`,
+ * `bg-primary`...) funcionar em claro e escuro sem nenhuma classe `dark:` espalhada pelo código.
  * @type {import('tailwindcss').Config}
  */
 module.exports = {
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
+        background: "rgb(var(--rt-background) / <alpha-value>)",
+        foreground: "rgb(var(--rt-foreground) / <alpha-value>)",
+        card: "rgb(var(--rt-card) / <alpha-value>)",
+        muted: "rgb(var(--rt-muted) / <alpha-value>)",
+        border: "rgb(var(--rt-border) / <alpha-value>)",
         primary: {
-          50: "#F5F3FF",
-          100: "#EDE9FE",
-          200: "#DDD6FE",
-          300: "#C4B5FD",
-          400: "#A78BFA",
-          500: "#8B5CF6",
-          600: "#7C3AED",
-          700: "#6D28D9",
-          800: "#5B21B6",
-          900: "#4C1D95",
-          DEFAULT: "#7C3AED",
+          DEFAULT: "rgb(var(--rt-primary) / <alpha-value>)",
+          foreground: "rgb(var(--rt-primary-foreground) / <alpha-value>)",
         },
-        neutral: {
-          0: "#FFFFFF",
-          50: "#F8FAFC",
-          100: "#F1F5F9",
-          200: "#E2E8F0",
-          300: "#CBD5E1",
-          400: "#94A3B8",
-          500: "#64748B",
-          600: "#475569",
-          700: "#334155",
-          800: "#1E293B",
-          900: "#0F172A",
-        },
-        success: { DEFAULT: "#16A34A", bg: "#F0FDF4" },
-        warning: { DEFAULT: "#D97706", bg: "#FFFBEB" },
-        danger: { DEFAULT: "#DC2626", bg: "#FEF2F2" },
+        success: "rgb(var(--rt-success) / <alpha-value>)",
+        warning: "rgb(var(--rt-warning) / <alpha-value>)",
+        danger: "rgb(var(--rt-danger) / <alpha-value>)",
       },
       borderRadius: {
         DEFAULT: "0.75rem",
@@ -43,16 +31,10 @@ module.exports = {
         lg: "1rem",
       },
       fontFamily: {
-        sans: [
-          "Inter",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "sans-serif",
-        ],
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 1px 3px 0 rgb(15 23 42 / 0.08)",
+        card: "0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)",
       },
     },
   },

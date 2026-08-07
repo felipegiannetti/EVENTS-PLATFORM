@@ -66,3 +66,11 @@ export function convidarAcesso(eventoId: string, input: ConvidarAcessoInput, tok
     token,
   );
 }
+
+export function removerAcesso(eventoId: string, usuarioId: string, token: string) {
+  return apiFetch<void>(
+    `/events/${eventoId}/acesso/${usuarioId}`,
+    { method: "DELETE" },
+    token,
+  );
+}

@@ -1,6 +1,8 @@
 # Plataforma de Ingressos — Resumo do Produto
 ### Produto próprio da NOVYX (primeiro produto do portfólio, estilo "Alphabet")
 
+> **Nome da marca**: o produto se chama **RARO Tickets**. NOVYX é só a empresa dona da plataforma — não aparece pro usuário final dentro do produto (título, header, telas), só em contextos institucionais. Este documento usa "Plataforma de Ingressos NOVYX" como referência interna/de arquitetura; ver [docs/frontend/design-system.md](../frontend/design-system.md) para a marca voltada ao usuário.
+
 ---
 
 ## 1. Visão geral

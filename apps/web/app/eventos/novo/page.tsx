@@ -36,7 +36,7 @@ function FormularioEvento({ token }: { token: string }) {
         },
         token,
       );
-      router.push(`/eventos/${evento.id}`);
+      router.push(`/eventos/${evento.id}/conta-repasse`);
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível criar o evento.");
     } finally {
@@ -47,7 +47,8 @@ function FormularioEvento({ token }: { token: string }) {
   return (
     <main className="mx-auto max-w-md px-4 py-10">
       <Card>
-        <h1 className="text-xl font-semibold text-neutral-900">Criar evento</h1>
+        <p className="text-xs font-medium uppercase tracking-wide text-primary">Etapa 1 de 2</p>
+        <h1 className="text-xl font-semibold text-foreground">Dados do evento</h1>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
           <Input id="nome" label="Nome do evento" required value={nome} onChange={(e) => setNome(e.target.value)} />
           <Input
@@ -61,7 +62,7 @@ function FormularioEvento({ token }: { token: string }) {
           <Input id="local" label="Local" required value={local} onChange={(e) => setLocal(e.target.value)} />
           {erro && <p className="text-sm text-danger">{erro}</p>}
           <Button type="submit" disabled={enviando}>
-            {enviando ? "Criando..." : "Criar evento"}
+            {enviando ? "Salvando..." : "Continuar"}
           </Button>
         </form>
       </Card>

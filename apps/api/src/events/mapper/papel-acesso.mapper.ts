@@ -9,6 +9,8 @@ export class PapelAcessoMapper {
       usuarioId: model.usuarioId,
       eventoId: model.eventoId,
       papel: model.papel,
+      usuarioNome: model.usuarioNome,
+      usuarioEmail: model.usuarioEmail,
     };
   }
 }

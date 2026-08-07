@@ -6,3 +6,7 @@ export * from "./schemas/lote.schema";
 export * from "./schemas/link-venda.schema";
 export * from "./schemas/papel-acesso.schema";
 export * from "./schemas/ingresso.schema";
+export * from "./schemas/conta-bancaria.schema";
+export * from "./schemas/resumo-financeiro.schema";
+export * from "./data/bancos-brasil";
+export * from "./validators/documento";

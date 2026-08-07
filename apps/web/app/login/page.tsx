@@ -32,9 +32,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-md flex-col justify-center px-4">
       <Card>
-        <h1 className="text-xl font-semibold text-neutral-900">Entrar</h1>
+        <h1 className="text-xl font-semibold text-foreground">Entrar</h1>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
           <Input
             id="email"
@@ -57,7 +57,7 @@ export default function LoginPage() {
             {enviando ? "Entrando..." : "Entrar"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-neutral-500">
+        <p className="mt-4 text-center text-sm text-muted">
           Não tem conta?{" "}
           <Link href="/registro" className="text-primary hover:underline">
             Criar conta

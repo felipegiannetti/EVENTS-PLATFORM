@@ -55,6 +55,11 @@ model Usuario {
   @@map("usuarios")
 }
 
+enum TipoContaBancaria {
+  corrente
+  poupanca
+}
+
 /// Refresh token opaco (guardado como hash) com rotação e janela deslizante — ver docs/architecture/07 e a fatia de implementação auth.
 model RefreshToken {
   id         String    @id @default(uuid())
@@ -102,8 +107,31 @@ model Evento {
   ingressos         Ingresso[]
   listaOff          ListaOff[]
   acordosComerciais AcordoComercial[]
+  contaBancaria     ContaBancaria?
 
   @@map("eventos")
+}
+
+/// Conta de repasse — por EVENTO, não por organizador: o mesmo organizador pode rodar eventos
+/// com contas de repasse diferentes (ex: evento em parceria com outro CNPJ). Cadastrada na 2ª
+/// etapa da criação do evento — ver docs/architecture/09-modelo-financeiro.md e
+/// apps/web/app/eventos/novo/conta-repasse/page.tsx. Guarda os dados brutos por enquanto; quando
+/// o gateway (Asaas) entrar na fatia de checkout, esse cadastro passa a disparar a criação da
+/// subconta correspondente no gateway.
+model ContaBancaria {
+  id               String            @id @default(uuid())
+  eventoId         String            @unique
+  evento           Evento            @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  banco            String
+  agencia          String
+  conta            String
+  tipoConta        TipoContaBancaria
+  titular          String
+  documentoTitular String
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  @@map("contas_bancarias")
 }
 
 model Lote {

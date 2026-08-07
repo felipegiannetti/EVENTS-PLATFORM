@@ -2,14 +2,22 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
-import type { EventoResponse, IngressoResponse, LoteResponse } from "@events-platform/shared-types";
+import Link from "next/link";
+import type {
+  EventoResponse,
+  IngressoResponse,
+  LoteResponse,
+  ResumoFinanceiroEvento,
+} from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Stat, formatarReais } from "@/components/ui/stat";
 import { ApiError } from "@/lib/api-client";
 import { buscarEvento, criarLote, listarLotes } from "@/lib/events-client";
 import { emitirIngresso, listarIngressos } from "@/lib/tickets-client";
+import { buscarResumoFinanceiro } from "@/lib/finance-client";
 
 export default function EventoDetalhePage() {
   return <ProtectedPage>{(token) => <EventoDetalhe token={token} />}</ProtectedPage>;
@@ -20,17 +28,20 @@ function EventoDetalhe({ token }: { token: string }) {
   const [evento, setEvento] = useState<EventoResponse | null>(null);
   const [lotes, setLotes] = useState<LoteResponse[]>([]);
   const [ingressos, setIngressos] = useState<IngressoResponse[]>([]);
+  const [resumo, setResumo] = useState<ResumoFinanceiroEvento | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   async function recarregar() {
-    const [eventoAtual, lotesAtuais, ingressosAtuais] = await Promise.all([
+    const [eventoAtual, lotesAtuais, ingressosAtuais, resumoAtual] = await Promise.all([
       buscarEvento(id, token),
       listarLotes(id, token),
       listarIngressos(id, token),
+      buscarResumoFinanceiro(id, token),
     ]);
     setEvento(eventoAtual);
     setLotes(lotesAtuais);
     setIngressos(ingressosAtuais);
+    setResumo(resumoAtual);
   }
 
   useEffect(() => {
@@ -53,27 +64,52 @@ function EventoDetalhe({ token }: { token: string }) {
     return <p className="p-6 text-sm text-danger">{erro}</p>;
   }
   if (!evento) {
-    return <p className="p-6 text-sm text-neutral-500">Carregando...</p>;
+    return <p className="p-6 text-sm text-muted">Carregando...</p>;
   }
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold text-neutral-900">{evento.nome}</h1>
-      <p className="text-sm text-neutral-500">
+      <h1 className="text-xl font-semibold text-foreground">{evento.nome}</h1>
+      <p className="text-sm text-muted">
         {new Date(evento.data).toLocaleString("pt-BR")} · {evento.local}
       </p>
 
+      {resumo && (
+        <Card className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Stat label="Vendas brutas" value={formatarReais(resumo.vendasBrutas)} />
+          <Stat label="Ticket médio" value={formatarReais(resumo.ticketMedioBruto)} />
+          <Stat label="Ingressos válidos" value={String(resumo.ingressosValidos)} />
+          <Stat label="Cancelados" value={String(resumo.ingressosCancelados)} />
+        </Card>
+      )}
+
+      <div className="mt-3 flex flex-col gap-2">
+        <Link
+          href={`/eventos/${id}/financeiro`}
+          className="flex items-center justify-between rounded border border-border/10 bg-card px-4 py-2.5 text-sm hover:border-primary/30"
+        >
+          <span className="text-foreground/80">Financeiro</span>
+          <span className="font-medium text-primary">Ver detalhes →</span>
+        </Link>
+
+        <Link
+          href={`/eventos/${id}/acesso`}
+          className="flex items-center justify-between rounded border border-border/10 bg-card px-4 py-2.5 text-sm hover:border-primary/30"
+        >
+          <span className="text-foreground/80">Quem tem acesso</span>
+          <span className="font-medium text-primary">Gerenciar →</span>
+        </Link>
+      </div>
+
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-          Lotes
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Lotes</h2>
         <div className="flex flex-col gap-3">
           {lotes.map((lote) => (
             <Card key={lote.id}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-neutral-900">{lote.nome}</p>
-                  <p className="text-sm text-neutral-500">
+                  <p className="font-medium text-foreground">{lote.nome}</p>
+                  <p className="text-sm text-muted">
                     R$ {lote.preco.toFixed(2)} · {lote.quantidadeEmitida}/{lote.quantidade} emitidos
                   </p>
                 </div>
@@ -83,32 +119,44 @@ function EventoDetalhe({ token }: { token: string }) {
               </div>
             </Card>
           ))}
-          {lotes.length === 0 && (
-            <p className="text-sm text-neutral-500">Nenhum lote criado ainda.</p>
-          )}
+          {lotes.length === 0 && <p className="text-sm text-muted">Nenhum lote criado ainda.</p>}
         </div>
         <FormularioLote eventoId={id} token={token} onCriado={recarregar} />
       </section>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
           Ingressos emitidos
         </h2>
         <div className="flex flex-col gap-2">
           {ingressos.map((ingresso) => (
-            <Card key={ingresso.id} className="flex items-center justify-between">
-              <span className="text-sm text-neutral-700">{ingresso.status}</span>
-              <code className="max-w-[60%] truncate text-xs text-neutral-400">
-                {ingresso.qrToken}
-              </code>
+            <Card key={ingresso.id} className="flex items-center justify-between gap-3">
+              <StatusBadge status={ingresso.status} />
+              <code className="max-w-[60%] truncate text-xs text-muted">{ingresso.qrToken}</code>
             </Card>
           ))}
           {ingressos.length === 0 && (
-            <p className="text-sm text-neutral-500">Nenhum ingresso emitido ainda.</p>
+            <p className="text-sm text-muted">Nenhum ingresso emitido ainda.</p>
           )}
         </div>
       </section>
     </main>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const estilos: Record<string, string> = {
+    valido: "bg-success/10 text-success",
+    usado: "bg-muted/15 text-muted",
+    cancelado: "bg-danger/10 text-danger",
+  };
+
+  return (
+    <span
+      className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium capitalize ${estilos[status] ?? "bg-muted/15 text-muted"}`}
+    >
+      {status}
+    </span>
   );
 }
 

@@ -9,6 +9,7 @@ import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { EventsModule } from "./events/events.module";
 import { TicketsModule } from "./tickets/tickets.module";
+import { FinanceModule } from "./finance/finance.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TicketsModule } from "./tickets/tickets.module";
     AuthModule,
     EventsModule,
     TicketsModule,
+    FinanceModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

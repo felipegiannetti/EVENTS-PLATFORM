@@ -16,7 +16,7 @@ export function ProtectedPage({ children }: { children: (accessToken: string) =>
   }, [carregando, accessToken, router]);
 
   if (carregando || !accessToken) {
-    return <p className="p-6 text-sm text-neutral-500">Carregando...</p>;
+    return <p className="p-6 text-sm text-muted">Carregando...</p>;
   }
 
   return <>{children(accessToken)}</>;

@@ -33,9 +33,9 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-md flex-col justify-center px-4">
       <Card>
-        <h1 className="text-xl font-semibold text-neutral-900">Criar conta</h1>
+        <h1 className="text-xl font-semibold text-foreground">Criar conta</h1>
         <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
           <Input
             id="nome"
@@ -67,7 +67,7 @@ export default function RegistroPage() {
             {enviando ? "Criando..." : "Criar conta"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-neutral-500">
+        <p className="mt-4 text-center text-sm text-muted">
           Já tem conta?{" "}
           <Link href="/login" className="text-primary hover:underline">
             Entrar

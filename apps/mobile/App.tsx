@@ -8,14 +8,18 @@ interface HealthData {
   database: "up" | "down";
 }
 
-// Mesmos tokens de cor do design system web (packages/config/tailwind-preset.js) —
-// aqui hardcoded porque o RN não lê o preset Tailwind diretamente.
+// Mesma paleta RARO Tickets do web (ver docs/frontend/design-system.md e
+// packages/config/tailwind-preset.js) — hardcoded aqui porque o RN não lê o preset
+// Tailwind diretamente. Só modo claro por enquanto; dark mode em RN fica pra fatia futura
+// (precisaria da Appearance API do RN + os dois conjuntos de cores, ver docs/implementation).
 const cores = {
-  fundo: "#F8FAFC",
-  texto: "#0F172A",
-  textoSecundario: "#64748B",
-  sucesso: "#16A34A",
-  perigo: "#DC2626",
+  fundo: "#F6F1E7",
+  cartao: "#FFFDF9",
+  texto: "#2A241E",
+  textoSecundario: "#8A7D6E",
+  primaria: "#2C8C81",
+  sucesso: "#168458",
+  perigo: "#BE2E24",
 };
 
 export default function App() {
@@ -33,7 +37,9 @@ export default function App() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <Text style={styles.titulo}>NOVYX Ingressos</Text>
+      <Text style={styles.titulo}>
+        RARO <Text style={{ color: cores.primaria }}>Tickets</Text>
+      </Text>
       <Text style={styles.subtitulo}>App de check-in (esqueleto)</Text>
 
       <View style={styles.card}>
@@ -73,7 +79,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: cores.cartao,
     borderRadius: 12,
     padding: 20,
     gap: 6,

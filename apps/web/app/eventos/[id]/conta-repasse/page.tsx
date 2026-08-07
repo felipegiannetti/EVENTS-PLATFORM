@@ -47,16 +47,16 @@ function FormularioContaRepasse({ token }: { token: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-10">
-      <Card>
-        <p className="text-xs font-medium uppercase tracking-wide text-primary">Etapa 2 de 2</p>
-        <h1 className="text-xl font-semibold text-foreground">Conta de repasse</h1>
-        <p className="mt-1 text-sm text-muted">
+    <main className="page-shell max-w-2xl">
+      <Card className="p-7 sm:p-9">
+        <p className="eyebrow">Etapa 2 de 2</p>
+        <h1 className="page-title !text-3xl">Conta de repasse</h1>
+        <p className="page-description">
           É pra essa conta que o valor das vendas deste evento vai ser repassado. Cada evento tem
           a sua — se você tem outro evento com um repasse diferente, cadastra separado lá.
         </p>
 
-        <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="mt-7 flex flex-col gap-5">
           <Select id="banco" label="Banco" value={banco} onChange={(e) => setBanco(e.target.value)}>
             {BANCOS_BRASIL.map((b) => (
               <option key={b.codigo} value={b.codigo}>
@@ -111,7 +111,7 @@ function FormularioContaRepasse({ token }: { token: string }) {
             onChange={(e) => setDocumentoTitular(e.target.value)}
           />
           {erro && <p className="text-sm text-danger">{erro}</p>}
-          <Button type="submit" disabled={enviando}>
+          <Button type="submit" disabled={enviando} className="mt-2 w-full">
             {enviando ? "Salvando..." : "Salvar e concluir"}
           </Button>
         </form>

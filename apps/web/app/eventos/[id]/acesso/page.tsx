@@ -67,22 +67,23 @@ function GestaoAcesso({ token }: { token: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold text-foreground">Quem tem acesso a este evento</h1>
-      <p className="mt-1 text-sm text-muted">
+    <main className="page-shell max-w-5xl">
+      <span className="eyebrow">Equipe</span>
+      <h1 className="page-title">Quem tem acesso</h1>
+      <p className="page-description">
         Convide gestores, visualizadores ou operadores de check-in — cada um só enxerga e faz o
         que o papel dele permite.
       </p>
 
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">
         {acessos?.map((acesso) => (
-          <Card key={acesso.usuarioId} className="flex items-center justify-between">
+          <Card key={acesso.usuarioId} className="flex items-center justify-between p-5 hover:border-primary/20">
             <div>
               <p className="font-medium text-foreground">{acesso.usuarioNome}</p>
               <p className="text-sm text-muted">{acesso.usuarioEmail}</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium capitalize text-primary">
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold capitalize text-primary">
                 {acesso.papel === "checkin_operator" ? "check-in" : acesso.papel}
               </span>
               {acesso.papel !== "owner" && (
@@ -100,11 +101,11 @@ function GestaoAcesso({ token }: { token: string }) {
         {acessos === null && <p className="text-sm text-muted">Carregando...</p>}
       </div>
 
-      <Card className="mt-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+      <Card className="mt-8 p-7">
+        <h2 className="section-title !text-lg">
           Convidar alguém
         </h2>
-        <form onSubmit={onConvidar} className="mt-4 flex flex-wrap items-end gap-3">
+        <form onSubmit={onConvidar} className="mt-5 flex flex-wrap items-end gap-3">
           <div className="min-w-52 flex-1">
             <Input
               id="email-convite"

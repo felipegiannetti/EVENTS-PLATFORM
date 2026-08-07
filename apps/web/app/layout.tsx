@@ -2,15 +2,14 @@ import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RARO Tickets",
-  description: "Venda e gestão de ingressos para eventos.",
+  title: "Novyx — Eventos que conectam",
+  description: "Descubra, crie e gerencie experiências inesquecíveis.",
 };
 
-// Aplica a classe "dark" antes da hidratação do React — evita flash de tema errado no load.
-// Ver docs/frontend/design-system.md.
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
@@ -24,17 +23,9 @@ const THEME_INIT_SCRIPT = `
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-        {/* eslint-disable-next-line react/no-danger */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-      </head>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} /></head>
       <body suppressHydrationWarning>
-        <ThemeProvider>
-          <AuthProvider>
-            <Header />
-            {children}
-          </AuthProvider>
-        </ThemeProvider>
+        <ThemeProvider><AuthProvider><Header />{children}<Footer /></AuthProvider></ThemeProvider>
       </body>
     </html>
   );

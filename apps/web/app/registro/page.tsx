@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function RegistroPage() {
   const { registrar } = useAuth();
@@ -33,10 +34,9 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-md flex-col justify-center px-4">
-      <Card>
-        <h1 className="text-xl font-semibold text-foreground">Criar conta</h1>
-        <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
+    <AuthShell title="Crie sua conta" description="Comece a criar experiências memoráveis em poucos minutos.">
+      <Card className="p-7 sm:p-8">
+        <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <Input
             id="nome"
             label="Nome"
@@ -63,7 +63,7 @@ export default function RegistroPage() {
             onChange={(e) => setSenha(e.target.value)}
           />
           {erro && <p className="text-sm text-danger">{erro}</p>}
-          <Button type="submit" disabled={enviando}>
+          <Button type="submit" disabled={enviando} className="mt-1 w-full">
             {enviando ? "Criando..." : "Criar conta"}
           </Button>
         </form>
@@ -74,6 +74,6 @@ export default function RegistroPage() {
           </Link>
         </p>
       </Card>
-    </main>
+    </AuthShell>
   );
 }

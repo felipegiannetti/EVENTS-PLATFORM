@@ -6,11 +6,14 @@ Documentação do que já foi **construído** (código real), como complemento �
 
 ## Como rodar localmente
 
+O procedimento atualizado, incluindo a porta `5433` do PostgreSQL e os comandos separados para API e frontend, está em [desenvolvimento-local.md](desenvolvimento-local.md).
+
 ```bash
 pnpm install
-docker-compose up -d          # sobe o Postgres local
+docker compose up -d postgres # sobe o Postgres local na porta externa 5433
 pnpm --filter api exec prisma migrate dev
-pnpm dev                      # roda api + web + mobile em paralelo (Turborepo)
+pnpm --filter api dev         # terminal 1: API na porta 3000
+pnpm --filter web dev         # terminal 2: web na porta 3001
 ```
 
 A API sobe em `http://localhost:3000` (porta configurável via `API_PORT` no `.env`, copiado de `.env.example`).
@@ -68,9 +71,9 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 
 *Nota: o plano original descrevia `GET /tickets/:id` solto — ficou aninhado em `/events/:id/ingressos/:ticketId` porque o `EventRoleGuard` precisa do `eventoId` na própria rota para checar o papel do usuário.* A validação do QR em si (check-in) fica para o módulo `checkin`, ainda não implementado.
 
-## Marca: RARO Tickets (produto) vs. NOVYX (empresa)
+## Marca Novyx
 
-O produto visível pro usuário se chama **RARO Tickets** — título, header, tudo. **NOVYX nunca aparece na UI**, só em contexto institucional (docs, contrato). Ver [docs/product/resumo-produto.md](../product/resumo-produto.md) e [docs/frontend/design-system.md](../frontend/design-system.md) (paleta inspirada na sinalização "CAZA RARO": teal `#2C8C81` sobre creme quente `#F6F1E7`, com modo escuro).
+A experiência web usa a marca **Novyx**. A identidade anterior em teal e creme foi substituída por uma linguagem violeta/azul, com temas claro e escuro, superfícies modernas e iconografia Lucide. Consulte o [design system](../frontend/design-system.md) para os tokens e padrões atuais.
 
 ## Frontend (`apps/web`)
 

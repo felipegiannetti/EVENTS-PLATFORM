@@ -2,38 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Paleta RARO Tickets — inspirada na sinalização "CAZA RARO" (teal sobre creme quente).
- * Ver docs/frontend/design-system.md para o racional de cada token.
- * Valores em "R G B" (sem vírgula) para funcionar com a sintaxe rgb(var(--x) / <alpha-value>)
- * do packages/config/tailwind-preset.js.
- */
 :root {
-  --rt-background: 246 241 231; /* #F6F1E7 creme quente */
-  --rt-foreground: 42 36 30; /* #2A241E texto escuro quente */
-  --rt-card: 255 253 249; /* #FFFDF9 */
-  --rt-muted: 138 125 110; /* #8A7D6E */
-  --rt-border: 42 36 30; /* usado sempre com opacidade, ex: border-border/10 */
-  --rt-primary: 44 140 129; /* #2C8C81 teal CAZA RARO */
+  --rt-background: 247 247 252;
+  --rt-foreground: 22 21 38;
+  --rt-card: 255 255 255;
+  --rt-muted: 103 101 126;
+  --rt-border: 46 40 88;
+  --rt-primary: 109 40 217;
   --rt-primary-foreground: 255 255 255;
-  --rt-success: 22 132 88;
-  --rt-warning: 180 106 8;
-  --rt-danger: 190 46 36;
+  --rt-success: 5 150 105;
+  --rt-warning: 217 119 6;
+  --rt-danger: 225 29 72;
+  --rt-surface: 241 240 249;
+  --rt-primary-soft: 240 232 255;
+  color-scheme: light;
 }
 
 :root.dark {
-  --rt-background: 30 26 22; /* #1E1A16 carvão quente */
-  --rt-foreground: 243 238 227; /* #F3EEE3 creme */
-  --rt-card: 40 35 30; /* #28231E */
-  --rt-muted: 168 156 142; /* #A89C8E */
-  --rt-border: 243 238 227;
-  --rt-primary: 58 166 156; /* #3AA69C teal um pouco mais claro p/ contraste no escuro */
+  --rt-background: 6 8 20;
+  --rt-foreground: 244 244 255;
+  --rt-card: 14 18 38;
+  --rt-muted: 157 159 187;
+  --rt-border: 119 111 171;
+  --rt-primary: 133 65 255;
   --rt-primary-foreground: 255 255 255;
-  --rt-success: 74 199 140;
-  --rt-warning: 224 158 63;
-  --rt-danger: 224 96 84;
+  --rt-success: 52 211 153;
+  --rt-warning: 251 191 36;
+  --rt-danger: 251 113 133;
+  --rt-surface: 10 13 29;
+  --rt-primary-soft: 32 22 66;
+  color-scheme: dark;
+}
+
+* {
+  border-color: rgb(var(--rt-border) / 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-background text-foreground font-sans antialiased transition-colors duration-150;
+  @apply min-h-screen bg-background text-foreground font-sans antialiased transition-colors duration-300;
+  background-image:
+    radial-gradient(circle at 15% -10%, rgb(var(--rt-primary) / 0.11), transparent 28rem),
+    radial-gradient(circle at 90% 15%, rgb(37 99 235 / 0.07), transparent 25rem);
+}
+
+::selection {
+  background: rgb(var(--rt-primary) / 0.3);
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--rt-primary));
+  outline-offset: 3px;
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 sm:py-14;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .page-title {
+    @apply mt-4 text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl;
+  }
+
+  .page-description {
+    @apply mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold tracking-[-0.025em] text-foreground sm:text-2xl;
+  }
+
+  .glass-panel {
+    @apply border border-border/10 bg-card/80 shadow-card backdrop-blur-xl;
+  }
+
+  .grid-pattern {
+    background-image:
+      linear-gradient(rgb(var(--rt-border) / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--rt-border) / 0.045) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgb(var(--rt-muted) / 0.35);
+  background-clip: padding-box;
 }

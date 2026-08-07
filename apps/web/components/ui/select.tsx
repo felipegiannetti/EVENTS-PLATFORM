@@ -7,13 +7,13 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 /** Mesmo tratamento visual do Input — ver docs/frontend/design-system.md. */
 export function Select({ label, id, className = "", children, ...props }: SelectProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-foreground/80">
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-sm font-semibold text-foreground/80">
         {label}
       </label>
       <select
         id={id}
-        className={`rounded border border-border/20 bg-card px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary ${className}`}
+        className={`h-12 rounded-xl border border-border/15 bg-background/60 px-4 text-sm text-foreground shadow-inner outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 ${className}`}
         {...props}
       >
         {children}

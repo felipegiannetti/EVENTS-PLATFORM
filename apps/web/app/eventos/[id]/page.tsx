@@ -68,14 +68,15 @@ function EventoDetalhe({ token }: { token: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold text-foreground">{evento.nome}</h1>
-      <p className="text-sm text-muted">
+    <main className="page-shell max-w-5xl">
+      <span className="eyebrow">Visão geral do evento</span>
+      <h1 className="page-title">{evento.nome}</h1>
+      <p className="page-description">
         {new Date(evento.data).toLocaleString("pt-BR")} · {evento.local}
       </p>
 
       {resumo && (
-        <Card className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card className="mt-8 grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
           <Stat label="Vendas brutas" value={formatarReais(resumo.vendasBrutas)} />
           <Stat label="Ticket médio" value={formatarReais(resumo.ticketMedioBruto)} />
           <Stat label="Ingressos válidos" value={String(resumo.ingressosValidos)} />
@@ -83,10 +84,10 @@ function EventoDetalhe({ token }: { token: string }) {
         </Card>
       )}
 
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Link
           href={`/eventos/${id}/financeiro`}
-          className="flex items-center justify-between rounded border border-border/10 bg-card px-4 py-2.5 text-sm hover:border-primary/30"
+          className="flex items-center justify-between rounded-2xl border border-border/10 bg-card px-5 py-4 text-sm shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/30"
         >
           <span className="text-foreground/80">Financeiro</span>
           <span className="font-medium text-primary">Ver detalhes →</span>
@@ -94,16 +95,16 @@ function EventoDetalhe({ token }: { token: string }) {
 
         <Link
           href={`/eventos/${id}/acesso`}
-          className="flex items-center justify-between rounded border border-border/10 bg-card px-4 py-2.5 text-sm hover:border-primary/30"
+          className="flex items-center justify-between rounded-2xl border border-border/10 bg-card px-5 py-4 text-sm shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/30"
         >
           <span className="text-foreground/80">Quem tem acesso</span>
           <span className="font-medium text-primary">Gerenciar →</span>
         </Link>
       </div>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Lotes</h2>
-        <div className="flex flex-col gap-3">
+      <section className="mt-12">
+        <h2 className="section-title mb-5">Lotes e ingressos</h2>
+        <div className="grid gap-3 md:grid-cols-2">
           {lotes.map((lote) => (
             <Card key={lote.id}>
               <div className="flex items-center justify-between">
@@ -124,8 +125,8 @@ function EventoDetalhe({ token }: { token: string }) {
         <FormularioLote eventoId={id} token={token} onCriado={recarregar} />
       </section>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+      <section className="mt-12">
+        <h2 className="section-title mb-5">
           Ingressos emitidos
         </h2>
         <div className="flex flex-col gap-2">
@@ -153,7 +154,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium capitalize ${estilos[status] ?? "bg-muted/15 text-muted"}`}
+      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${estilos[status] ?? "bg-muted/15 text-muted"}`}
     >
       {status}
     </span>
@@ -191,7 +192,7 @@ function FormularioLote({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 flex flex-wrap items-end gap-3">
+    <form onSubmit={onSubmit} className="mt-5 flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-primary/20 bg-primary/5 p-5">
       <div className="min-w-40 flex-1">
         <Input id="lote-nome" label="Novo lote" required value={nome} onChange={(e) => setNome(e.target.value)} />
       </div>

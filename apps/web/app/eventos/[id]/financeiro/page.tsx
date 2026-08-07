@@ -36,9 +36,10 @@ function Financeiro({ token }: { token: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold text-foreground">Financeiro</h1>
-      <p className="mt-1 text-sm text-muted">
+    <main className="page-shell max-w-5xl">
+      <span className="eyebrow">Performance</span>
+      <h1 className="page-title">Financeiro</h1>
+      <p className="page-description">
         Números deste evento — vendas manuais/gratuitas emitidas até agora.
       </p>
 
@@ -46,14 +47,14 @@ function Financeiro({ token }: { token: string }) {
         <p className="mt-6 text-sm text-muted">Carregando...</p>
       ) : (
         <>
-          <Card className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <Card className="mt-8 grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
             <Stat label="Vendas brutas" value={formatarReais(resumo.vendasBrutas)} />
             <Stat label="Ticket médio" value={formatarReais(resumo.ticketMedioBruto)} />
             <Stat label="Ingressos válidos" value={String(resumo.ingressosValidos)} />
             <Stat label="Cancelados" value={String(resumo.ingressosCancelados)} />
           </Card>
 
-          <Card className="mt-4">
+          <Card className="mt-5 border-warning/20 bg-warning/5">
             <div className="flex items-center justify-between gap-4 rounded bg-warning/10 px-3 py-2 text-sm text-warning">
               <span>
                 Repasse (em processamento / total a receber / total recebido) ainda não está
@@ -65,12 +66,12 @@ function Financeiro({ token }: { token: string }) {
         </>
       )}
 
-      <Card className="mt-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+      <Card className="mt-5 p-7">
+        <h2 className="section-title !text-lg">
           Conta de repasse
         </h2>
         {contaBancaria ? (
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-5 flex items-center justify-between rounded-xl bg-background/50 p-4">
             <div className="text-sm text-foreground">
               <p className="font-medium">{nomeDoBanco(contaBancaria.banco)}</p>
               <p className="text-muted">
@@ -84,7 +85,7 @@ function Financeiro({ token }: { token: string }) {
             </Link>
           </div>
         ) : (
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-5 flex items-center justify-between rounded-xl bg-background/50 p-4">
             <p className="text-sm text-muted">Nenhuma conta cadastrada ainda.</p>
             <Link href={`/eventos/${id}/conta-repasse`} className="text-sm text-primary hover:underline">
               Cadastrar →

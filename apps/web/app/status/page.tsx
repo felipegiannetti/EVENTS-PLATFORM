@@ -21,17 +21,18 @@ export default function StatusPage() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-md flex-col items-center justify-center px-4">
-      <Card className="w-full">
-        <h1 className="text-lg font-semibold text-foreground">Status</h1>
+    <main className="page-shell flex min-h-[calc(100vh-72px)] max-w-xl flex-col items-center justify-center">
+      <Card className="w-full p-8">
+        <span className="eyebrow">Sistema</span>
+        <h1 className="page-title !text-3xl">Status dos serviços</h1>
         {erro && <p className="mt-3 text-sm text-danger">{erro}</p>}
         {health && (
-          <dl className="mt-3 space-y-1 text-sm">
-            <div className="flex justify-between">
+          <dl className="mt-6 space-y-3 text-sm">
+            <div className="flex justify-between rounded-xl bg-background/60 p-4">
               <dt className="text-muted">API</dt>
               <dd className="font-medium text-success">{health.status}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between rounded-xl bg-background/60 p-4">
               <dt className="text-muted">Banco de dados</dt>
               <dd className={`font-medium ${health.database === "up" ? "text-success" : "text-danger"}`}>
                 {health.database}

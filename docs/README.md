@@ -1,6 +1,8 @@
-# Documentação — Plataforma de Ingressos NOVYX
+# Documentação — NOVYX Events Platform
 
-- [Resumo do produto](product/resumo-produto.md) — visão geral, personas, funcionalidades e entidades de alto nível.
-- [Arquitetura](architecture/README.md) — decisões técnicas, diagrama, módulos do backend, modelo de dados, escala, segurança, app de check-in, pagamento, modelo financeiro e infraestrutura.
-- [Design system (frontend)](frontend/design-system.md) — paleta de cores e regras de uso do `apps/web`.
-- [Implementação](implementation/README.md) — o que já foi construído: como rodar localmente e referência da API.
+- [Resumo do produto](product/resumo-produto.md) — visão geral, público e funcionalidades.
+- [Arquitetura](architecture/README.md) — decisões técnicas, módulos, dados, segurança e infraestrutura.
+- [Implementação](implementation/README.md) — funcionalidades já construídas e referência da API.
+- [Desenvolvimento local](implementation/desenvolvimento-local.md) — instalação, banco, migrations e comandos de execução.
+- [Design system](frontend/design-system.md) — identidade Novyx, temas claro/escuro, componentes e responsividade.
+- [Alterações de agosto de 2026](implementation/alteracoes-2026-08.md) — registro consolidado da configuração e da refatoração visual.

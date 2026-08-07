@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -32,10 +33,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-57px)] max-w-md flex-col justify-center px-4">
-      <Card>
-        <h1 className="text-xl font-semibold text-foreground">Entrar</h1>
-        <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
+    <AuthShell title="Acesse sua conta" description="Gerencie eventos, vendas e equipes em um só lugar.">
+      <Card className="p-7 sm:p-8">
+        <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <Input
             id="email"
             label="Email"
@@ -53,7 +53,7 @@ export default function LoginPage() {
             onChange={(e) => setSenha(e.target.value)}
           />
           {erro && <p className="text-sm text-danger">{erro}</p>}
-          <Button type="submit" disabled={enviando}>
+          <Button type="submit" disabled={enviando} className="mt-1 w-full">
             {enviando ? "Entrando..." : "Entrar"}
           </Button>
         </form>
@@ -64,6 +64,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </Card>
-    </main>
+    </AuthShell>
   );
 }

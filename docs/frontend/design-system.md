@@ -34,6 +34,7 @@ A home consulta `GET /events/public`. Não existem nomes, quantidades ou cards d
 - Contagens são calculadas a partir da resposta da API.
 - Busca e filtro trabalham sobre os eventos reais carregados.
 - O filtro de localização usa a composição `cidade, estado, país`; nomes de arenas ou estabelecimentos não entram no dropdown.
+- O filtro de data usa um seletor de calendário e exibe somente eventos do dia escolhido.
 - O header apresenta somente uma lupa para entrada na busca pública.
 - A rota `/eventos/todos` concentra a barra de pesquisa e os filtros adicionais.
 - Cards de categoria navegam para `/eventos/todos?categoria=<categoria>`.

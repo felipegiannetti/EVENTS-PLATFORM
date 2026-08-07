@@ -84,7 +84,7 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 |---|---|
 | `/login`, `/registro` | Autenticação — usam `lib/auth-context.tsx`, que guarda o access token só em memória e faz refresh silencioso (cookie `httpOnly`) ao montar |
 | `/status` | Health check da API (esqueleto original da fatia 1) |
-| `/eventos/todos` | Catálogo público com busca por nome/local, filtros de categoria, local e período, além de ordenação |
+| `/eventos/todos` | Catálogo público com busca por nome/localização, filtros de categoria, cidade/estado/país e data exata, além de ordenação |
 | `/eventos` | Lista os eventos do usuário logado |
 | `/eventos/novo` | **Etapa 1 de 2** da criação de evento (dados do evento) — ao salvar, encaminha pra `conta-repasse` |
 | `/eventos/[id]` | Painel do evento: mini painel financeiro (vendas brutas, ticket médio, válidos/cancelados), lotes (com criação inline), ingressos emitidos, e atalhos pra Financeiro e Quem tem acesso |
@@ -98,7 +98,7 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 
 **Localização do evento**: novos eventos exigem `cidade`, `estado` e `pais`. O campo legado `local` permanece apenas para compatibilidade do banco e não é usado no catálogo. Eventos antigos sem os três novos campos são exibidos como “Localização não informada”; nenhuma localização é inferida a partir do nome de uma arena ou estabelecimento.
 
-**Busca pública**: o header exibe somente um botão de lupa, que abre `/eventos/todos` com foco na busca. A busca grande da home envia o termo para essa página. Os cards e atalhos de categoria também abrem o catálogo usando `?categoria=<valor>`, permitindo combinar a categoria recebida com local, período e ordenação.
+**Busca pública**: o header exibe somente um botão de lupa, que abre `/eventos/todos` com foco na busca. A busca grande da home envia o termo para essa página. Os cards e atalhos de categoria também abrem o catálogo usando `?categoria=<valor>`, permitindo combinar a categoria recebida com cidade/estado/país, uma data específica e ordenação.
 
 **Validação compartilhada** (`packages/shared-types`): `validators/documento.ts` valida CPF/CNPJ por dígito verificador real (não só tamanho — algoritmo oficial da Receita), `data/bancos-brasil.ts` é a lista curada de bancos (código Febraban) usada tanto na validação do Zod quanto no `<Select>` do formulário — usada em vez de texto livre porque elimina "banco que não existe" por digitação.
 

@@ -46,20 +46,21 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 ### 3.5 Check-in via câmera (leitura de QR code)
 - App/tela com acesso à câmera do dispositivo (celular ou tablet) para ler o QR code na entrada
 - Validação em tempo real: ingresso válido / já utilizado / inválido
-- Precisa funcionar bem **offline ou com conexão instável** — é o ponto mais crítico do dia do evento (fila na porta não pode travar por causa de rede)
+- **Decisão de arquitetura**: a validação é sempre online, sem modo offline — ver [docs/architecture/07-app-checkin.md](../architecture/07-app-checkin.md) para o racional
 
 ### 3.6 Venda de ingresso reservado (PDV / balcão)
 - "Local para vender ingresso já comprado" → interpretando como um **ponto de venda presencial** onde a equipe confirma/finaliza uma reserva feita antes (ex: alguém reservou por WhatsApp e paga na entrada), ou reemite/reimprime um ingresso já pago
-- Vale confirmar com você o cenário exato: é (a) finalizar uma reserva pré-feita, ou (b) vender um ingresso novo presencialmente? Os dois têm fluxos diferentes — se for os dois, melhor desenhar como duas telas separadas no PDV
+- Vale confirmar o cenário exato: é (a) finalizar uma reserva pré-feita, ou (b) vender um ingresso novo presencialmente? Os dois têm fluxos diferentes — se for os dois, melhor desenhar como duas telas separadas no PDV
 
 ### 3.7 Trava de transferência de ingresso
 - Por padrão, ingresso **não pode ser repassado** para outro CPF/e-mail depois de emitido
 - Isso é a principal arma antifraude/anticâmbio (evita revenda não autorizada — o "cambismo digital")
-- Sugestão: deixar configurável por evento (o organizador decide se permite transferência ou não), em vez de travado globalmente — dá flexibilidade comercial sem perder a feature como diferencial
+- Configurável por evento (o organizador decide se permite transferência ou não), em vez de travado globalmente — dá flexibilidade comercial sem perder a feature como diferencial
 
 ### 3.8 Painel do admin geral do sistema (NOVYX)
 - Tela separada da administração do evento — é o **superadmin da plataforma como um todo**
 - Liga/desliga features do sistema (feature flags): ex: desativar temporariamente a geração de parciais por e-mail, ou lançar uma feature nova só para eventos selecionados
+- Configuração comercial (split de taxa de serviço por organizador — ver [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md))
 - Também é onde, no futuro, dá pra colocar: monitoramento de uso, saúde do sistema, gestão de todos os eventos/organizadores cadastrados
 
 ---
@@ -73,6 +74,8 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 - **Usuário** → pode ser Organizador, Gestor, View, Operador de check-in, ou Admin geral
 - **Transação** → registro de pagamento (ou gratuidade) vinculado a um Ingresso
 
+Modelo de dados completo (com RBAC por evento, split financeiro e auditoria) em [docs/architecture/04-modelo-de-dados.md](../architecture/04-modelo-de-dados.md).
+
 ---
 
 ## 5. Pontos de atenção antifraude (dado o perfil "premium/segurança" da NOVYX)
@@ -85,16 +88,6 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 
 ## 6. Monólito ou microsserviço no início?
 
-**Recomendação: monólito modular.**
+**Decisão: monólito modular.** Ver o racional completo e o desenho técnico em [docs/architecture/README.md](../architecture/README.md).
 
-Motivos:
-1. **Time pequeno.** Vocês dois + software house rodando em paralelo. Microsserviço exige gerenciar deploy, comunicação entre serviços, observabilidade distribuída — overhead que consome tempo de gente que vocês não têm sobrando agora.
-2. **Produto ainda não validado.** Vocês não sabem ainda quais módulos vão crescer mais (é venda? é check-in? é o admin?). Dividir em serviços cedo demais trava decisões de arquitetura em cima de suposições, e é caro voltar atrás.
-3. **A dor real de escala aqui não é "muitos serviços", é "picos de tráfego".** Venda de ingresso tem um padrão bem específico: calmaria, depois um pico violento de acesso no lançamento de vendas. Isso não se resolve com microsserviço — resolve com **fila (queue) e cache** na frente do fluxo de compra, mesmo dentro de um monólito.
-4. **Monólito modular ainda te prepara pro futuro.** Se vocês já separarem bem as camadas internamente (ex: módulo de Evento, módulo de Ingresso/Compra, módulo de Check-in, módulo de Admin — cada um com fronteiras claras de código, mesmo rodando no mesmo processo/deploy), fica muito mais barato extrair um módulo específico pra microsserviço depois, se e quando a demanda justificar (ex: check-in em altíssima concorrência num evento de 20 mil pessoas pode um dia justificar isolar só esse módulo).
-
-**O que eu isolaria desde já, mesmo dentro do monólito:**
-- **Fluxo de compra/pagamento** atrás de fila assíncrona, pra aguentar picos sem cair
-- **Geração de QR code e validação de check-in** com lógica bem separada do resto (é o módulo mais sensível a rede instável no dia do evento)
-
-Resumindo: comecem monólito, mas organizado como se um dia fosse virar vários serviços. Migrar para microsserviço é uma decisão de quando a dor de escala for real e específica — não uma decisão de dia 1.
+Resumo: comecem monólito, mas organizado como se um dia fosse virar vários serviços. Migrar para microsserviço é uma decisão de quando a dor de escala for real e específica — não uma decisão de dia 1. Os módulos de compra/pagamento e de check-in/QR já nascem com fronteiras internas rígidas para facilitar essa extração futura, se necessário.

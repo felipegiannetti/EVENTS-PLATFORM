@@ -33,6 +33,10 @@ A home consulta `GET /events/public`. Não existem nomes, quantidades ou cards d
 - Categorias sem eventos não são renderizadas.
 - Contagens são calculadas a partir da resposta da API.
 - Busca e filtro trabalham sobre os eventos reais carregados.
+- O filtro de localização usa a composição `cidade, estado, país`; nomes de arenas ou estabelecimentos não entram no dropdown.
+- O header apresenta somente uma lupa para entrada na busca pública.
+- A rota `/eventos/todos` concentra a barra de pesquisa e os filtros adicionais.
+- Cards de categoria navegam para `/eventos/todos?categoria=<categoria>`.
 - Cada evento recebe uma das categorias predefinidas: Shows, Festivais, Negócios, Esportes, Cursos, Tecnologia ou Outros.
 - `Outros` é uma classificação final e não abre campo de texto adicional.
 

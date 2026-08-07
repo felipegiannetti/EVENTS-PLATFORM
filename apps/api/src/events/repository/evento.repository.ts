@@ -6,7 +6,9 @@ export const EVENTO_REPOSITORY = Symbol("EVENTO_REPOSITORY");
 export interface CriarEventoData {
   nome: string;
   data: Date;
-  local: string;
+  cidade: string;
+  estado: string;
+  pais: string;
   categoria: CategoriaEvento;
   transferivel: boolean;
   taxaPagaPor: TaxaPagaPor;

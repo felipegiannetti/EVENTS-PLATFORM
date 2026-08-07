@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import {
   CATEGORIA_EVENTO,
+  formatarLocalizacaoEvento,
   ROTULO_CATEGORIA_EVENTO,
   type CategoriaEvento,
   type EventoResponse,
@@ -32,7 +33,6 @@ export default function HomePage() {
   const [eventos, setEventos] = useState<EventoResponse[]>([]);
   const [carregandoEventos, setCarregandoEventos] = useState(true);
   const [busca, setBusca] = useState("");
-  const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaEvento | null>(null);
 
   useEffect(() => {
     listarEventosPublicos().then(setEventos).catch(() => setEventos([])).finally(() => setCarregandoEventos(false));
@@ -45,10 +45,9 @@ export default function HomePage() {
 
   const eventosVisiveis = useMemo(() => eventos.filter((evento) => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
-    const correspondeBusca = !termo || `${evento.nome} ${evento.local}`.toLocaleLowerCase("pt-BR").includes(termo);
-    const correspondeCategoria = !categoriaAtiva || evento.categoria === categoriaAtiva;
-    return correspondeBusca && correspondeCategoria;
-  }), [busca, categoriaAtiva, eventos]);
+    const correspondeBusca = !termo || `${evento.nome} ${formatarLocalizacaoEvento(evento)}`.toLocaleLowerCase("pt-BR").includes(termo);
+    return correspondeBusca;
+  }), [busca, eventos]);
 
   return (
     <main className="overflow-hidden">
@@ -61,12 +60,12 @@ export default function HomePage() {
             <span className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-100 backdrop-blur"><Sparkles size={14} /> Onde grandes histórias começam</span>
             <h1 className="max-w-xl text-4xl font-bold leading-[1.04] tracking-[-0.055em] text-white sm:text-6xl">Viva experiências que <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">conectam</span> pessoas e marcas.</h1>
             <p className="mt-6 max-w-lg text-base leading-7 text-slate-300 sm:text-lg">Descubra eventos incríveis ou transforme sua ideia em uma experiência inesquecível.</p>
-            <div className="mt-8 flex max-w-xl items-center rounded-2xl border border-white/10 bg-white/[0.08] p-1.5 shadow-2xl backdrop-blur-xl">
+            <form action="/eventos/todos" method="get" className="search-shell mt-8 flex max-w-xl items-center rounded-2xl border border-white/10 bg-white/[0.08] p-1.5 shadow-2xl backdrop-blur-xl">
               <Search className="ml-3 text-slate-400" size={19} />
-              <input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar eventos" placeholder="Buscar eventos por nome ou local..." className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500" />
-              <a href="#destaques" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-glow" aria-label="Ver resultados"><ArrowRight size={18} /></a>
-            </div>
-            {categoriasDisponiveis.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{categoriasDisponiveis.map(({ categoria }) => <button key={categoria} onClick={() => setCategoriaAtiva(categoriaAtiva === categoria ? null : categoria)} className={`rounded-full border px-3 py-1 text-[11px] transition-colors ${categoriaAtiva === categoria ? "border-violet-300 bg-violet-500 text-white" : "border-white/10 bg-white/[0.06] text-slate-300 hover:bg-white/10"}`}>{ROTULO_CATEGORIA_EVENTO[categoria]}</button>)}</div>}
+              <input name="q" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar eventos" placeholder="Buscar eventos por nome ou cidade..." className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500" />
+              <button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-glow" aria-label="Pesquisar eventos"><ArrowRight size={18} /></button>
+            </form>
+            {categoriasDisponiveis.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{categoriasDisponiveis.map(({ categoria }) => <Link key={categoria} href={`/eventos/todos?categoria=${categoria}`} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] text-slate-300 transition-colors hover:bg-white/10">{ROTULO_CATEGORIA_EVENTO[categoria]}</Link>)}</div>}
           </div>
         </div>
       </section>
@@ -76,17 +75,17 @@ export default function HomePage() {
           <div><span className="eyebrow">Explore</span><h2 className="section-title mt-3">Encontre seu próximo momento</h2></div>
           <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">{categoriasDisponiveis.map(({ categoria, quantidade }) => {
             const { icon: Icon, color } = categoryStyle[categoria];
-            return <button key={categoria} onClick={() => setCategoriaAtiva(categoriaAtiva === categoria ? null : categoria)} className={`group rounded-2xl border bg-card/80 p-5 text-left shadow-card transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-glow ${categoriaAtiva === categoria ? "border-primary/40 ring-4 ring-primary/10" : "border-border/10"}`}><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon size={22} /></span><p className="mt-4 font-semibold text-foreground">{ROTULO_CATEGORIA_EVENTO[categoria]}</p><p className="mt-1 text-xs text-muted">{quantidade} {quantidade === 1 ? "evento" : "eventos"}</p></button>;
+            return <Link key={categoria} href={`/eventos/todos?categoria=${categoria}`} className="group rounded-2xl border border-border/10 bg-card/80 p-5 text-left shadow-card transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-glow"><span className={`grid h-11 w-11 place-items-center rounded-2xl ${color}`}><Icon size={22} /></span><p className="mt-4 font-semibold text-foreground">{ROTULO_CATEGORIA_EVENTO[categoria]}</p><p className="mt-1 text-xs text-muted">{quantidade} {quantidade === 1 ? "evento" : "eventos"}</p></Link>;
           })}</div>
         </section>
       )}
 
       <section id="destaques" className="page-shell scroll-mt-24 !pt-4">
-        <div className="flex items-end justify-between gap-4"><div><span className="eyebrow">Agenda real</span><h2 className="section-title mt-3">Eventos cadastrados</h2></div>{categoriaAtiva && <button onClick={() => setCategoriaAtiva(null)} className="text-sm font-semibold text-primary">Limpar filtro</button>}</div>
+        <div className="flex items-end justify-between gap-4"><div><span className="eyebrow">Agenda real</span><h2 className="section-title mt-3">Eventos cadastrados</h2></div><Link href="/eventos/todos" className="hidden items-center gap-2 text-sm font-semibold text-primary sm:flex">Ver todos <ArrowRight size={16} /></Link></div>
         {carregandoEventos ? <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map((item) => <div key={item} className="h-72 animate-pulse rounded-2xl bg-card" />)}</div> : eventosVisiveis.length > 0 ? (
           <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{eventosVisiveis.map((evento) => {
             const date = new Date(evento.data);
-            return <article key={evento.id} className="group overflow-hidden rounded-2xl border border-border/10 bg-card shadow-card transition-all hover:-translate-y-1.5 hover:shadow-glow"><div className="relative h-48 overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${categoryStyle[evento.categoria].image})` }}><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><span className="absolute bottom-3 left-3 rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-bold text-slate-900">{ROTULO_CATEGORIA_EVENTO[evento.categoria]}</span></div><div className="flex gap-4 p-4"><div className="h-fit min-w-12 rounded-xl bg-primary/10 px-2 py-2 text-center text-primary"><p className="text-sm font-bold leading-4">{String(date.getDate()).padStart(2, "0")}</p><p className="text-[9px] font-bold uppercase">{date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</p></div><div className="min-w-0"><h3 className="font-semibold leading-5 text-foreground">{evento.nome}</h3><p className="mt-2 flex items-center gap-1 text-xs text-muted"><MapPin size={12} />{evento.local}</p><p className="mt-3 text-xs text-muted">{date.toLocaleDateString("pt-BR", { year: "numeric" })}</p></div></div></article>;
+            return <article key={evento.id} className="group overflow-hidden rounded-2xl border border-border/10 bg-card shadow-card transition-all hover:-translate-y-1.5 hover:shadow-glow"><div className="relative h-48 overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${categoryStyle[evento.categoria].image})` }}><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><span className="absolute bottom-3 left-3 rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-bold text-slate-900">{ROTULO_CATEGORIA_EVENTO[evento.categoria]}</span></div><div className="flex gap-4 p-4"><div className="h-fit min-w-12 rounded-xl bg-primary/10 px-2 py-2 text-center text-primary"><p className="text-sm font-bold leading-4">{String(date.getDate()).padStart(2, "0")}</p><p className="text-[9px] font-bold uppercase">{date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</p></div><div className="min-w-0"><h3 className="font-semibold leading-5 text-foreground">{evento.nome}</h3><p className="mt-2 flex items-center gap-1 text-xs text-muted"><MapPin size={12} />{formatarLocalizacaoEvento(evento)}</p><p className="mt-3 text-xs text-muted">{date.toLocaleDateString("pt-BR", { year: "numeric" })}</p></div></div></article>;
           })}</div>
         ) : <div className="mt-7 rounded-2xl border border-dashed border-primary/20 bg-primary/5 px-6 py-12 text-center"><p className="font-semibold text-foreground">Nenhum evento disponível no momento.</p><p className="mt-2 text-sm text-muted">Assim que um evento for cadastrado, ele aparecerá aqui.</p></div>}
       </section>

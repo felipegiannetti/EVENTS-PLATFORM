@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, LogOut, Menu, Plus, Ticket, X } from "lucide-react";
+import { LogOut, Menu, Plus, Search, Ticket, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 
@@ -29,7 +29,7 @@ export function Header() {
   const navItems = accessToken
     ? [{ href: "/eventos", label: "Meus eventos" }]
     : [
-        { href: "/#destaques", label: "Eventos" },
+        { href: "/eventos/todos", label: "Eventos" },
         { href: "/#categorias", label: "Categorias" },
         { href: "/#organizadores", label: "Para organizadores" },
         { href: "/#como-funciona", label: "Como funciona" },
@@ -53,6 +53,14 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/eventos/todos?foco=busca"
+            aria-label="Pesquisar eventos"
+            title="Pesquisar eventos"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-border/15 bg-card/70 text-muted shadow-sm transition-all hover:border-primary/30 hover:text-primary"
+          >
+            <Search size={18} />
+          </Link>
           {!carregando && accessToken ? (
             <>
               <Link href="/eventos/novo" className="hidden sm:block">

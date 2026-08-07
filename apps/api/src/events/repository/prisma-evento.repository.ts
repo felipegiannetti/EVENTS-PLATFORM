@@ -9,7 +9,12 @@ export class PrismaEventoRepository implements EventoRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async criar(data: CriarEventoData): Promise<EventoModel> {
-    const evento = await this.prisma.evento.create({ data });
+    const evento = await this.prisma.evento.create({
+      data: {
+        ...data,
+        local: [data.cidade, data.estado, data.pais].join(", "),
+      },
+    });
     return this.toModel(evento);
   }
 
@@ -41,7 +46,9 @@ export class PrismaEventoRepository implements EventoRepository {
       evento.id,
       evento.nome,
       evento.data,
-      evento.local,
+      evento.cidade,
+      evento.estado,
+      evento.pais,
       evento.categoria,
       evento.transferivel,
       evento.taxaPagaPor,

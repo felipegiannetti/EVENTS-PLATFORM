@@ -34,7 +34,9 @@ export class EventsService {
     const evento = await this.eventoRepository.criar({
       nome: input.nome,
       data: new Date(input.data),
-      local: input.local,
+      cidade: input.cidade,
+      estado: input.estado,
+      pais: input.pais,
       categoria: input.categoria,
       transferivel: input.transferivel,
       taxaPagaPor: input.taxaPagaPor,

@@ -106,6 +106,9 @@ model Evento {
   nome         String
   data         DateTime
   local        String
+  cidade       String?
+  estado       String?
+  pais         String?
   categoria    CategoriaEvento @default(outros)
   transferivel Boolean     @default(false)
   taxaPagaPor  TaxaPagaPor @default(comprador)

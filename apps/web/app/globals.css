@@ -80,6 +80,20 @@ select {
       linear-gradient(90deg, rgb(var(--rt-border) / 0.045) 1px, transparent 1px);
     background-size: 36px 36px;
   }
+
+  .search-shell {
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .search-shell:focus-within {
+    border-color: rgb(var(--rt-primary) / 0.9);
+    box-shadow: 0 0 0 3px rgb(var(--rt-primary) / 0.24);
+  }
+
+  .search-shell input:focus-visible {
+    outline: none;
+    outline-offset: 0;
+  }
 }
 
 ::-webkit-scrollbar {

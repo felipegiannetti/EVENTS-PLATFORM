@@ -25,7 +25,9 @@ function FormularioEvento({ token }: { token: string }) {
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState<CategoriaEvento>("shows");
   const [data, setData] = useState("");
-  const [local, setLocal] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
+  const [pais, setPais] = useState("Brasil");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -39,7 +41,9 @@ function FormularioEvento({ token }: { token: string }) {
           nome,
           categoria,
           data: new Date(data).toISOString(),
-          local,
+          cidade,
+          estado,
+          pais,
           transferivel: false,
           taxaPagaPor: "comprador",
         },
@@ -73,7 +77,11 @@ function FormularioEvento({ token }: { token: string }) {
               </Select>
               <p className="-mt-3 text-xs text-muted">Selecione “Outros” quando nenhuma categoria representar o evento. Não será necessário informar um tipo adicional.</p>
               <Input id="data" label="Data e horário" type="datetime-local" required value={data} onChange={(e) => setData(e.target.value)} />
-              <Input id="local" label="Local" placeholder="Espaço ou endereço do evento" required value={local} onChange={(e) => setLocal(e.target.value)} />
+              <div className="grid gap-5 sm:grid-cols-[1fr_140px]">
+                <Input id="cidade" label="Cidade" placeholder="Ex.: São Paulo" required value={cidade} onChange={(e) => setCidade(e.target.value)} />
+                <Input id="estado" label="Estado" placeholder="Ex.: SP" required value={estado} onChange={(e) => setEstado(e.target.value)} />
+              </div>
+              <Input id="pais" label="País" placeholder="Ex.: Brasil" required value={pais} onChange={(e) => setPais(e.target.value)} />
               {erro && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{erro}</p>}
               <Button type="submit" disabled={enviando} className="mt-2 w-full">{enviando ? "Salvando..." : "Continuar para o financeiro"}</Button>
             </form>

@@ -1,4 +1,4 @@
-# NOVYX Events Platform
+# RARO Tickets
 
 Plataforma para descoberta, criação e gestão de eventos e ingressos.
 
@@ -31,4 +31,3 @@ Consulte o [guia completo de desenvolvimento local](docs/implementation/desenvol
 - [Arquitetura](docs/architecture/README.md)
 - [Implementação](docs/implementation/README.md)
 - [Design system](docs/frontend/design-system.md)
-- [Alterações de agosto de 2026](docs/implementation/alteracoes-2026-08.md)

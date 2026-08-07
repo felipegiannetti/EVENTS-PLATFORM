@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@n
 import { EventRoleGuard } from "../security/guards/event-role.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
 import { CurrentUser } from "../security/decorators/current-user.decorator";
+import { Public } from "../security/decorators/public.decorator";
 import type { AuthenticatedUser } from "../security/types/authenticated-request";
 import { EventsService } from "./events.service";
 import { EventoMapper } from "./mapper/evento.mapper";
@@ -36,6 +37,13 @@ export class EventsController {
   @Get()
   async listar(@CurrentUser() usuario: AuthenticatedUser) {
     const eventos = await this.eventsService.listarEventosDoUsuario(usuario.id);
+    return eventos.map((evento) => this.eventoMapper.toResponse(evento));
+  }
+
+  @Public()
+  @Get("public")
+  async listarPublicos() {
+    const eventos = await this.eventsService.listarEventosPublicos();
     return eventos.map((evento) => this.eventoMapper.toResponse(evento));
   }
 

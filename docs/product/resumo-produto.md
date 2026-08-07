@@ -1,7 +1,7 @@
 # Plataforma de Ingressos — Resumo do Produto
 ### Produto próprio da NOVYX (primeiro produto do portfólio, estilo "Alphabet")
 
-> **Nome da marca**: a experiência do produto se chama **Novyx**. O nome aparece no título, header, autenticação e demais telas. Consulte [docs/frontend/design-system.md](../frontend/design-system.md) para a identidade visual atual.
+> **Nome da marca**: a plataforma voltada ao usuário se chama **RARO Tickets**. A Novyx é citada na interface apenas no copyright do rodapé, como proprietária da plataforma. Consulte [docs/frontend/design-system.md](../frontend/design-system.md) para a identidade visual atual.
 
 ---
 

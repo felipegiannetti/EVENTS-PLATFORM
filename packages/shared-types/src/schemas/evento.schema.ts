@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { PAPEL_EVENTO, TAXA_PAGA_POR } from "../enums";
+import { CATEGORIA_EVENTO, PAPEL_EVENTO, TAXA_PAGA_POR } from "../enums";
 
 export const criarEventoSchema = z.object({
   nome: z.string().min(2).max(160),
   data: z.string().datetime(),
   local: z.string().min(2).max(200),
+  categoria: z.enum(CATEGORIA_EVENTO),
   transferivel: z.boolean().default(false),
   taxaPagaPor: z.enum(TAXA_PAGA_POR).default("comprador"),
 });
@@ -18,6 +19,7 @@ export const eventoResponseSchema = z.object({
   nome: z.string(),
   data: z.string().datetime(),
   local: z.string(),
+  categoria: z.enum(CATEGORIA_EVENTO),
   transferivel: z.boolean(),
   taxaPagaPor: z.enum(TAXA_PAGA_POR),
   criadoEm: z.string().datetime(),

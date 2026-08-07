@@ -30,6 +30,16 @@ enum TaxaPagaPor {
   organizador
 }
 
+enum CategoriaEvento {
+  shows
+  festivais
+  negocios
+  esportes
+  cursos
+  tecnologia
+  outros
+}
+
 enum EscopoAcordoComercial {
   todos_eventos
   evento_especifico
@@ -96,6 +106,7 @@ model Evento {
   nome         String
   data         DateTime
   local        String
+  categoria    CategoriaEvento @default(outros)
   transferivel Boolean     @default(false)
   taxaPagaPor  TaxaPagaPor @default(comprador)
   criadoEm     DateTime    @default(now())

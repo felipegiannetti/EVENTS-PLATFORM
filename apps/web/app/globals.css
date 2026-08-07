@@ -18,22 +18,6 @@
   color-scheme: light;
 }
 
-:root.dark {
-  --rt-background: 6 8 20;
-  --rt-foreground: 244 244 255;
-  --rt-card: 14 18 38;
-  --rt-muted: 157 159 187;
-  --rt-border: 119 111 171;
-  --rt-primary: 133 65 255;
-  --rt-primary-foreground: 255 255 255;
-  --rt-success: 52 211 153;
-  --rt-warning: 251 191 36;
-  --rt-danger: 251 113 133;
-  --rt-surface: 10 13 29;
-  --rt-primary-soft: 32 22 66;
-  color-scheme: dark;
-}
-
 * {
   border-color: rgb(var(--rt-border) / 0.12);
 }

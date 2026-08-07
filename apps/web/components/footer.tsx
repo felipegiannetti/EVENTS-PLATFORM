@@ -16,7 +16,7 @@ export function Footer() {
         {[
           ["Explore", ["Eventos", "Categorias", "Destaques"]],
           ["Organizadores", ["Criar evento", "Gestão", "Financeiro"]],
-          ["Novyx", ["Sobre", "Privacidade", "Ajuda"]],
+          ["RARO Tickets", ["Sobre", "Privacidade", "Ajuda"]],
         ].map(([title, links]) => (
           <div key={title as string}>
             <p className="text-sm font-semibold text-foreground">{title}</p>

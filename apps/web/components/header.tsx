@@ -4,19 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 import { CalendarDays, LogOut, Menu, Plus, Ticket, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="group inline-flex items-center gap-2.5" aria-label="Novyx — início">
+    <Link href="/" className="group inline-flex items-center gap-2.5" aria-label="RARO Tickets — início">
       <span className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-500 via-primary to-blue-600 text-white shadow-glow transition-transform group-hover:rotate-3 group-hover:scale-105">
         <Ticket size={19} strokeWidth={2.2} />
         <span className="absolute inset-0 bg-white/10 [clip-path:polygon(0_0,100%_0,0_100%)]" />
       </span>
       {!compact && (
         <span className="text-xl font-bold tracking-[-0.045em] text-foreground">
-          novy<span className="text-primary">x</span>
+          RARO <span className="text-primary">Tickets</span>
         </span>
       )}
     </Link>
@@ -54,7 +53,6 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {!carregando && accessToken ? (
             <>
               <Link href="/eventos/novo" className="hidden sm:block">

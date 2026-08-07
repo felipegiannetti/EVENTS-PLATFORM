@@ -1,14 +1,10 @@
 /**
- * Design system do RARO Tickets — ver docs/frontend/design-system.md para o racional
- * (paleta inspirada na sinalização "CAZA RARO": teal sobre creme quente) e as regras de uso.
- *
- * As cores são variáveis CSS (definidas em apps/web/app/globals.css para :root e .dark),
- * não valores fixos — é isso que permite o mesmo componente (`bg-background`, `text-foreground`,
- * `bg-primary`...) funcionar em claro e escuro sem nenhuma classe `dark:` espalhada pelo código.
+ * Design system claro do RARO Tickets.
+ * Os tokens semânticos são definidos em apps/web/app/globals.css e compartilhados
+ * pelos componentes para manter cor, contraste e estados consistentes.
  * @type {import('tailwindcss').Config}
  */
 module.exports = {
-  darkMode: "class",
   theme: {
     extend: {
       colors: {

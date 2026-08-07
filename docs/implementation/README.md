@@ -45,8 +45,9 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 
 | Rota | Papel mínimo | Descrição |
 |---|---|---|
-| `POST /events` | qualquer usuário logado | Cria evento; quem cria vira `owner` (cria `PapelAcesso` automaticamente) |
+| `POST /events` | qualquer usuário logado | Cria evento com categoria predefinida; quem cria vira `owner` (cria `PapelAcesso` automaticamente) |
 | `GET /events` | — | Lista os eventos em que o usuário logado tem algum papel |
+| `GET /events/public` | público | Catálogo público usado pela home; retorna somente eventos realmente persistidos no banco |
 | `GET /events/:id` | view+ | Detalhe do evento |
 | `PATCH /events/:id` | gestor+ | Atualiza evento |
 | `GET /events/:id/lotes`, `POST .../lotes`, `PATCH .../lotes/:loteId` | view+ / gestor+ / gestor+ | Lotes do evento (`quantidadeEmitida` calculado a partir da contagem de ingressos) |
@@ -71,13 +72,13 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 
 *Nota: o plano original descrevia `GET /tickets/:id` solto — ficou aninhado em `/events/:id/ingressos/:ticketId` porque o `EventRoleGuard` precisa do `eventoId` na própria rota para checar o papel do usuário.* A validação do QR em si (check-in) fica para o módulo `checkin`, ainda não implementado.
 
-## Marca Novyx
+## Marca RARO Tickets
 
-A experiência web usa a marca **Novyx**. A identidade anterior em teal e creme foi substituída por uma linguagem violeta/azul, com temas claro e escuro, superfícies modernas e iconografia Lucide. Consulte o [design system](../frontend/design-system.md) para os tokens e padrões atuais.
+A experiência web usa a marca **RARO Tickets**. A Novyx aparece apenas no copyright do rodapé como proprietária da plataforma. A interface utiliza linguagem violeta/azul, tema exclusivamente claro, superfícies modernas e iconografia Lucide. Consulte o [design system](../frontend/design-system.md) para os tokens e padrões atuais.
 
 ## Frontend (`apps/web`)
 
-Construído em paralelo ao backend — a regra do time é sempre ter a tela de cada funcionalidade pronta assim que o módulo correspondente da API existe (ver [docs/frontend/design-system.md](../frontend/design-system.md) para a paleta, os tokens de claro/escuro e as regras de UI usadas em todas as telas abaixo).
+Construído em paralelo ao backend — a regra do time é sempre ter a tela de cada funcionalidade pronta assim que o módulo correspondente da API existe (ver [docs/frontend/design-system.md](../frontend/design-system.md) para a paleta clara e as regras de UI usadas em todas as telas abaixo).
 
 | Rota | Descrição |
 |---|---|
@@ -90,11 +91,13 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 | `/eventos/[id]/financeiro` | Painel financeiro completo: as mesmas métricas do mini painel + detalhe da conta de repasse + aviso claro de que "em processamento/a receber/recebido" ainda não existe (depende do checkout) |
 | `/eventos/[id]/acesso` | Lista quem tem acesso ao evento (nome, email, papel) e formulário pra convidar por email |
 
-`lib/api-client.ts` centraliza o fetch (envelope `{ data }` / `{ error }` do backend, `credentials: "include"` para o cookie de refresh); `lib/events-client.ts`, `lib/tickets-client.ts` e `lib/finance-client.ts` são os clients tipados com `@events-platform/shared-types`. Toda tela autenticada usa `<ProtectedPage>` (`components/protected-page.tsx`), que redireciona para `/login` se não houver sessão. `lib/theme-context.tsx` cuida do claro/escuro (persistido em `localStorage`, aplicado antes da hidratação via script inline em `app/layout.tsx` — sem isso o usuário veria um "flash" do tema errado no load).
+`lib/api-client.ts` centraliza o fetch (envelope `{ data }` / `{ error }` do backend, `credentials: "include"` para o cookie de refresh); `lib/events-client.ts`, `lib/tickets-client.ts` e `lib/finance-client.ts` são os clients tipados com `@events-platform/shared-types`. Toda tela autenticada usa `<ProtectedPage>` (`components/protected-page.tsx`), que redireciona para `/login` se não houver sessão. A aplicação usa exclusivamente o tema claro; não existe contexto, toggle ou persistência de tema.
+
+**Categorias de evento**: `shows`, `festivais`, `negocios`, `esportes`, `cursos`, `tecnologia` e `outros`. O formulário usa um dropdown fechado; escolher `outros` não abre campo livre. A home calcula as categorias e contagens a partir de `GET /events/public`, não renderiza categorias vazias e não contém eventos fictícios.
 
 **Validação compartilhada** (`packages/shared-types`): `validators/documento.ts` valida CPF/CNPJ por dígito verificador real (não só tamanho — algoritmo oficial da Receita), `data/bancos-brasil.ts` é a lista curada de bancos (código Febraban) usada tanto na validação do Zod quanto no `<Select>` do formulário — usada em vez de texto livre porque elimina "banco que não existe" por digitação.
 
-**Pendente**: `apps/mobile` ainda é só o esqueleto original (chama `/health`) — as telas de check-in/QR entram quando o módulo `checkin` do backend existir; também não tem modo escuro ainda (React Native não lê CSS/Tailwind, precisaria da `Appearance` API do RN + duplicar os tokens, ver nota em `App.tsx`).
+**Pendente**: `apps/mobile` ainda é só o esqueleto original (chama `/health`) — as telas de check-in/QR entram quando o módulo `checkin` do backend existir.
 
 ## Verificação end-to-end (fatia 1) — feita e confirmada
 

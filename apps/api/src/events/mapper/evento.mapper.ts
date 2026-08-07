@@ -10,6 +10,7 @@ export class EventoMapper {
       nome: model.nome,
       data: model.data.toISOString(),
       local: model.local,
+      categoria: model.categoria,
       transferivel: model.transferivel,
       taxaPagaPor: model.taxaPagaPor,
       criadoEm: model.criadoEm.toISOString(),

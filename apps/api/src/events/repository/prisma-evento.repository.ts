@@ -31,12 +31,18 @@ export class PrismaEventoRepository implements EventoRepository {
     return eventos.map((evento) => this.toModel(evento));
   }
 
+  async listarPublicos(): Promise<EventoModel[]> {
+    const eventos = await this.prisma.evento.findMany({ orderBy: { data: "asc" } });
+    return eventos.map((evento) => this.toModel(evento));
+  }
+
   private toModel(evento: Evento): EventoModel {
     return new EventoModel(
       evento.id,
       evento.nome,
       evento.data,
       evento.local,
+      evento.categoria,
       evento.transferivel,
       evento.taxaPagaPor,
       evento.criadoEm,

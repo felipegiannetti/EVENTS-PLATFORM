@@ -15,6 +15,10 @@ export function listarEventos(token: string) {
   return apiFetch<EventoResponse[]>("/events", {}, token);
 }
 
+export function listarEventosPublicos() {
+  return apiFetch<EventoResponse[]>("/events/public");
+}
+
 export function criarEvento(input: CriarEventoInput, token: string) {
   return apiFetch<EventoResponse>("/events", { method: "POST", body: JSON.stringify(input) }, token);
 }

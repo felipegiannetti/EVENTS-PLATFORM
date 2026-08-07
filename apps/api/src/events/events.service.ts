@@ -35,6 +35,7 @@ export class EventsService {
       nome: input.nome,
       data: new Date(input.data),
       local: input.local,
+      categoria: input.categoria,
       transferivel: input.transferivel,
       taxaPagaPor: input.taxaPagaPor,
     });
@@ -44,6 +45,10 @@ export class EventsService {
 
   async listarEventosDoUsuario(usuarioId: string): Promise<EventoModel[]> {
     return this.eventoRepository.listarPorUsuario(usuarioId);
+  }
+
+  async listarEventosPublicos(): Promise<EventoModel[]> {
+    return this.eventoRepository.listarPublicos();
   }
 
   async buscarEvento(eventoId: string): Promise<EventoModel> {

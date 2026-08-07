@@ -9,6 +9,7 @@ import type {
   LoteResponse,
   ResumoFinanceiroEvento,
 } from "@events-platform/shared-types";
+import { ROTULO_CATEGORIA_EVENTO } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ function EventoDetalhe({ token }: { token: string }) {
     <main className="page-shell max-w-5xl">
       <span className="eyebrow">Visão geral do evento</span>
       <h1 className="page-title">{evento.nome}</h1>
+      <span className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{ROTULO_CATEGORIA_EVENTO[evento.categoria]}</span>
       <p className="page-description">
         {new Date(evento.data).toLocaleString("pt-BR")} · {evento.local}
       </p>

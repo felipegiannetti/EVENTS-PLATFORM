@@ -6,7 +6,7 @@ Baseado no resumo do produto, com adições para RBAC por evento, split financei
 
 - **Usuario** (id, nome, email, senha_hash, papel_global)
 - **PapelAcesso** (usuario_id, evento_id, papel: owner/gestor/view/checkin_operator) — RBAC por evento
-- **Evento** (id, nome, data, local, transferivel: bool)
+- **Evento** (id, nome, data, local, categoria: shows/festivais/negocios/esportes/cursos/tecnologia/outros, transferivel: bool)
 - **Lote** (id, evento_id, nome, preço, quantidade)
 - **LinkVenda** (id, evento_id, slug, origem)
 - **Ingresso** (id, evento_id, lote_id, link_venda_id, status: válido/usado/cancelado, qr_token, transferivel)

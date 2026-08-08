@@ -46,12 +46,27 @@ enum EscopoAcordoComercial {
   proximos_n_eventos
 }
 
+enum TipoPessoa {
+  fisica
+  juridica
+}
+
+enum TipoDescontoCupom {
+  percentual
+  valor_fixo
+}
+
 model Usuario {
   id              String      @id @default(uuid())
   nome            String
   email           String      @unique
   senhaHash       String
   papelGlobal     PapelGlobal @default(usuario)
+  tipoPessoa      TipoPessoa  @default(fisica)
+  /// CPF (pessoa física) ou CNPJ (pessoa jurídica) — só dígitos, validado por dígito verificador no registerSchema.
+  documento       String      @unique
+  /// Só pessoa física — empresa não tem data de nascimento.
+  dataNascimento  DateTime?
   asaasSubcontaId String?
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
@@ -105,13 +120,32 @@ model Evento {
   id           String      @id @default(uuid())
   nome         String
   data         DateTime
+  /// Opcional — evento sem horário de término definido ainda é válido (ex: sem hora certa pra acabar).
+  dataFim      DateTime?
   local        String
   cidade       String?
   estado       String?
   pais         String?
+  /// Endereço detalhado — exibido sempre como "cidade, estado - rua + número + complemento, bairro - CEP: xxxxx-xxx" (ver formatarEnderecoEvento em shared-types).
+  rua          String?
+  numero       String?
+  complemento  String?
+  bairro       String?
+  cep          String?
+  /// Classificação etária — true = evento só pra maiores de 18.
+  somenteMaioresDeIdade Boolean @default(false)
   categoria    CategoriaEvento @default(outros)
   transferivel Boolean     @default(false)
   taxaPagaPor  TaxaPagaPor @default(comprador)
+  /// Banner do evento salvo como bytes direto no Postgres (bytea), não em storage externo/URL — decisão explícita do produto. Ver docs/architecture/04-modelo-de-dados.md.
+  imagemBanner     Bytes?
+  imagemBannerTipo String?
+  /// O evento existe por completo independente disso — este campo só controla se COMPRADORES já enxergam ele em GET /events/public. Privado (false) por padrão; só quem tem PapelAcesso enxerga até o organizador liberar (e pode tornar privado de novo depois).
+  publicado       Boolean @default(false)
+  descricao       String?
+  contatoNome     String?
+  contatoEmail    String?
+  contatoTelefone String?
   criadoEm     DateTime    @default(now())
   atualizadoEm DateTime    @updatedAt
 
@@ -122,8 +156,28 @@ model Evento {
   listaOff          ListaOff[]
   acordosComerciais AcordoComercial[]
   contaBancaria     ContaBancaria?
+  cupons            CupomDesconto[]
 
   @@map("eventos")
+}
+
+/// Cupom de desconto por evento — percentual (ex: 10%) ou valor fixo (ex: R$ 20). Aplicado só na
+/// futura fatia de checkout (ainda não existe compra paga self-service); por enquanto é só o
+/// cadastro/gestão do cupom em si.
+model CupomDesconto {
+  id       String            @id @default(uuid())
+  eventoId String
+  evento   Evento            @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  codigo   String
+  tipo     TipoDescontoCupom
+  valor    Decimal           @db.Decimal(10, 2)
+  ativo    Boolean           @default(true)
+  /// Sempre 0 até a fatia de checkout existir de verdade — não tem como um cupom ser "usado" sem compra self-service.
+  usos     Int               @default(0)
+  criadoEm DateTime          @default(now())
+
+  @@unique([eventoId, codigo])
+  @@map("cupons_desconto")
 }
 
 /// Conta de repasse — por EVENTO, não por organizador: o mesmo organizador pode rodar eventos
@@ -189,6 +243,10 @@ model Ingresso {
   qrToken      String         @unique
   transferivel Boolean        @default(false)
   version      Int            @default(0)
+  /// Preenchidos na emissão manual — ainda não existe checkout self-service, então nem todo ingresso tem comprador (ex: cortesias sem contato coletado). compradorEmail é o que liga um ingresso ao 'Meus ingressos' de um Usuario.
+  compradorNome      String?
+  compradorEmail     String?
+  compradorDocumento String?
   criadoEm     DateTime       @default(now())
   atualizadoEm DateTime       @updatedAt
 

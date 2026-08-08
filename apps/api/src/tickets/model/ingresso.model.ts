@@ -9,6 +9,9 @@ export class IngressoModel {
     public readonly status: StatusIngresso,
     public readonly qrToken: string,
     public readonly transferivel: boolean,
+    public readonly compradorNome: string | null,
+    public readonly compradorEmail: string | null,
+    public readonly compradorDocumento: string | null,
     public readonly criadoEm: Date,
   ) {}
 }

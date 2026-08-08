@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -18,6 +21,10 @@ import { LocalAuthGuard } from "./local-auth.guard";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshDto } from "./dto/refresh.dto";
+import { AtualizarPerfilDto } from "./dto/atualizar-perfil.dto";
+import { AlterarEmailDto } from "./dto/alterar-email.dto";
+import { AlterarSenhaDto } from "./dto/alterar-senha.dto";
+import { DeletarContaDto } from "./dto/deletar-conta.dto";
 import { UsuarioMapper } from "./mapper/usuario.mapper";
 import type { UsuarioModel } from "./model/usuario.model";
 import type { AuthenticatedUser } from "../security/types/authenticated-request";
@@ -35,7 +42,7 @@ export class AuthController {
   @Public()
   @Post("register")
   async register(@Body() dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const usuario = await this.authService.registrar(dto.nome, dto.email, dto.senha);
+    const usuario = await this.authService.registrar(dto);
     const sessao = await this.authService.login(usuario, this.contexto(req));
     this.setRefreshCookie(res, sessao.refreshToken);
     return { usuario: this.usuarioMapper.toResponse(usuario), ...sessao };
@@ -87,6 +94,41 @@ export class AuthController {
     if (refreshTokenPlano) {
       await this.authService.logout(refreshTokenPlano);
     }
+    res.clearCookie(REFRESH_COOKIE);
+  }
+
+  @Get("me")
+  async meuPerfil(@CurrentUser() usuario: AuthenticatedUser) {
+    const perfil = await this.authService.buscarPerfil(usuario.id);
+    return this.usuarioMapper.toResponse(perfil);
+  }
+
+  @Patch("me")
+  async atualizarPerfil(@CurrentUser() usuario: AuthenticatedUser, @Body() dto: AtualizarPerfilDto) {
+    const perfil = await this.authService.atualizarPerfil(usuario.id, dto);
+    return this.usuarioMapper.toResponse(perfil);
+  }
+
+  @Patch("me/email")
+  async alterarEmail(@CurrentUser() usuario: AuthenticatedUser, @Body() dto: AlterarEmailDto) {
+    const perfil = await this.authService.alterarEmail(usuario.id, dto.novoEmail, dto.senhaAtual);
+    return this.usuarioMapper.toResponse(perfil);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Patch("me/senha")
+  async alterarSenha(@CurrentUser() usuario: AuthenticatedUser, @Body() dto: AlterarSenhaDto): Promise<void> {
+    await this.authService.alterarSenha(usuario.id, dto.senhaAtual, dto.novaSenha);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("me")
+  async deletarConta(
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Body() dto: DeletarContaDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.authService.deletarConta(usuario.id, dto.senhaAtual);
     res.clearCookie(REFRESH_COOKIE);
   }
 

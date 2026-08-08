@@ -33,3 +33,9 @@ export const ROTULO_CATEGORIA_EVENTO: Record<CategoriaEvento, string> = {
 
 export const TIPO_CONTA_BANCARIA = ["corrente", "poupanca"] as const;
 export type TipoContaBancaria = (typeof TIPO_CONTA_BANCARIA)[number];
+
+export const TIPO_PESSOA = ["fisica", "juridica"] as const;
+export type TipoPessoa = (typeof TIPO_PESSOA)[number];
+
+export const TIPO_DESCONTO_CUPOM = ["percentual", "valor_fixo"] as const;
+export type TipoDescontoCupom = (typeof TIPO_DESCONTO_CUPOM)[number];

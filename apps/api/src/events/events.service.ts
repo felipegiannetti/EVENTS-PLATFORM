@@ -1,6 +1,16 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { CriarEventoInput, CriarLoteInput } from "@events-platform/shared-types";
-import { EVENTO_REPOSITORY, type EventoRepository } from "./repository/evento.repository";
+import {
+  TAMANHO_MAXIMO_BANNER_BYTES,
+  TIPOS_MIME_BANNER_ACEITOS,
+  type CriarCupomDescontoInput,
+  type CriarEventoInput,
+  type CriarLoteInput,
+} from "@events-platform/shared-types";
+import {
+  EVENTO_REPOSITORY,
+  type BannerEvento,
+  type EventoRepository,
+} from "./repository/evento.repository";
 import { LOTE_REPOSITORY, type LoteRepository } from "./repository/lote.repository";
 import {
   LINK_VENDA_REPOSITORY,
@@ -10,14 +20,21 @@ import {
   PAPEL_ACESSO_REPOSITORY,
   type PapelAcessoRepository,
 } from "./repository/papel-acesso.repository";
+import {
+  CUPOM_DESCONTO_REPOSITORY,
+  type CupomDescontoRepository,
+} from "./repository/cupom-desconto.repository";
 import { USUARIO_REPOSITORY, type UsuarioRepository } from "../auth/repository/usuario.repository";
 import { EventoModel } from "./model/evento.model";
 import { LoteModel } from "./model/lote.model";
 import { LinkVendaModel } from "./model/link-venda.model";
 import { PapelAcessoModel } from "./model/papel-acesso.model";
+import { CupomDescontoModel } from "./model/cupom-desconto.model";
 import { EventoNaoEncontradoException } from "./exceptions/evento-nao-encontrado.exception";
 import { LoteNaoEncontradoException } from "./exceptions/lote-nao-encontrado.exception";
 import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontrado.exception";
+import { BannerInvalidoException } from "./exceptions/banner-invalido.exception";
+import { CupomNaoEncontradoException } from "./exceptions/cupom-nao-encontrado.exception";
 
 @Injectable()
 export class EventsService {
@@ -28,18 +45,32 @@ export class EventsService {
     @Inject(PAPEL_ACESSO_REPOSITORY)
     private readonly papelAcessoRepository: PapelAcessoRepository,
     @Inject(USUARIO_REPOSITORY) private readonly usuarioRepository: UsuarioRepository,
+    @Inject(CUPOM_DESCONTO_REPOSITORY)
+    private readonly cupomDescontoRepository: CupomDescontoRepository,
   ) {}
 
   async criarEvento(usuarioId: string, input: CriarEventoInput): Promise<EventoModel> {
     const evento = await this.eventoRepository.criar({
       nome: input.nome,
       data: new Date(input.data),
+      dataFim: input.dataFim ? new Date(input.dataFim) : undefined,
       cidade: input.cidade,
       estado: input.estado,
       pais: input.pais,
+      rua: input.rua,
+      numero: input.numero,
+      complemento: input.complemento,
+      bairro: input.bairro,
+      cep: input.cep,
+      somenteMaioresDeIdade: input.somenteMaioresDeIdade,
       categoria: input.categoria,
       transferivel: input.transferivel,
       taxaPagaPor: input.taxaPagaPor,
+      publicado: input.publicado,
+      descricao: input.descricao,
+      contatoNome: input.contatoNome,
+      contatoEmail: input.contatoEmail,
+      contatoTelefone: input.contatoTelefone,
     });
     await this.papelAcessoRepository.criar(usuarioId, evento.id, "owner");
     return evento;
@@ -69,6 +100,7 @@ export class EventsService {
     return this.eventoRepository.atualizar(eventoId, {
       ...input,
       data: input.data ? new Date(input.data) : undefined,
+      dataFim: input.dataFim ? new Date(input.dataFim) : undefined,
     });
   }
 
@@ -129,5 +161,51 @@ export class EventsService {
   async listarAcessos(eventoId: string): Promise<PapelAcessoModel[]> {
     await this.buscarEvento(eventoId);
     return this.papelAcessoRepository.listarPorEvento(eventoId);
+  }
+
+  /** Banner salvo como bytes direto no Postgres — ver docs/architecture/04-modelo-de-dados.md. */
+  async atualizarBanner(eventoId: string, bytes: Buffer, mimeType: string): Promise<void> {
+    await this.buscarEvento(eventoId);
+    if (!TIPOS_MIME_BANNER_ACEITOS.includes(mimeType as (typeof TIPOS_MIME_BANNER_ACEITOS)[number])) {
+      throw new BannerInvalidoException(
+        `Formato de imagem não aceito (use ${TIPOS_MIME_BANNER_ACEITOS.join(", ")}).`,
+      );
+    }
+    if (bytes.byteLength > TAMANHO_MAXIMO_BANNER_BYTES) {
+      throw new BannerInvalidoException(
+        `Imagem muito grande — o máximo é ${TAMANHO_MAXIMO_BANNER_BYTES / (1024 * 1024)}MB.`,
+      );
+    }
+    await this.eventoRepository.atualizarBanner(eventoId, bytes, mimeType);
+  }
+
+  async buscarBanner(eventoId: string): Promise<BannerEvento | null> {
+    return this.eventoRepository.buscarBanner(eventoId);
+  }
+
+  async criarCupom(eventoId: string, input: CriarCupomDescontoInput): Promise<CupomDescontoModel> {
+    await this.buscarEvento(eventoId);
+    return this.cupomDescontoRepository.criar({ eventoId, ...input });
+  }
+
+  async listarCupons(eventoId: string): Promise<CupomDescontoModel[]> {
+    await this.buscarEvento(eventoId);
+    return this.cupomDescontoRepository.listarPorEvento(eventoId);
+  }
+
+  async atualizarCupom(eventoId: string, cupomId: string, ativo: boolean): Promise<CupomDescontoModel> {
+    const cupom = await this.cupomDescontoRepository.buscarPorId(cupomId);
+    if (!cupom || cupom.eventoId !== eventoId) {
+      throw new CupomNaoEncontradoException();
+    }
+    return this.cupomDescontoRepository.atualizarAtivo(cupomId, ativo);
+  }
+
+  async removerCupom(eventoId: string, cupomId: string): Promise<void> {
+    const cupom = await this.cupomDescontoRepository.buscarPorId(cupomId);
+    if (!cupom || cupom.eventoId !== eventoId) {
+      throw new CupomNaoEncontradoException();
+    }
+    await this.cupomDescontoRepository.remover(cupomId);
   }
 }

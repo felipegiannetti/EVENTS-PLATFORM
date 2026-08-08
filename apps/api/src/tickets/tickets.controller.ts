@@ -1,12 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
+import { CurrentUser } from "../security/decorators/current-user.decorator";
+import type { AuthenticatedUser } from "../security/types/authenticated-request";
 import { TicketsService } from "./tickets.service";
+import { ParticipantesService } from "./participantes.service";
 import { IngressoMapper } from "./mapper/ingresso.mapper";
 import { EmitirIngressoDto } from "./dto/emitir-ingresso.dto";
+import { CheckinDto } from "./dto/checkin.dto";
+import { EnviarEmailParticipantesDto } from "./dto/enviar-email-participantes.dto";
 
 const PAPEIS_LEITURA = ["owner", "gestor", "view", "checkin_operator"] as const;
 const PAPEIS_EDICAO = ["owner", "gestor"] as const;
+const PAPEIS_CHECKIN = ["owner", "gestor", "checkin_operator"] as const;
 
 /**
  * Rotas aninhadas em /events/:id (em vez de /tickets/:id soltas) porque o EventRoleGuard
@@ -16,6 +23,7 @@ const PAPEIS_EDICAO = ["owner", "gestor"] as const;
 export class TicketsController {
   constructor(
     private readonly ticketsService: TicketsService,
+    private readonly participantesService: ParticipantesService,
     private readonly ingressoMapper: IngressoMapper,
   ) {}
 
@@ -27,7 +35,7 @@ export class TicketsController {
     @Param("loteId") loteId: string,
     @Body() dto: EmitirIngressoDto,
   ) {
-    const ingresso = await this.ticketsService.emitir(eventoId, loteId, dto.linkVendaId);
+    const ingresso = await this.ticketsService.emitir(eventoId, loteId, dto);
     return this.ingressoMapper.toResponse(ingresso);
   }
 
@@ -53,5 +61,45 @@ export class TicketsController {
   async cancelar(@Param("ticketId") ticketId: string) {
     const ingresso = await this.ticketsService.cancelar(ticketId);
     return this.ingressoMapper.toResponse(ingresso);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_CHECKIN)
+  @Post("checkin")
+  async checkin(@Param("id") eventoId: string, @Body() dto: CheckinDto) {
+    const ingresso = await this.ticketsService.checkin(eventoId, dto.qrToken);
+    return this.ingressoMapper.toResponse(ingresso);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_LEITURA)
+  @Get("participantes/csv")
+  async exportarParticipantesCsv(@Param("id") eventoId: string, @Res() res: Response) {
+    const csv = await this.participantesService.gerarCsvParticipantes(eventoId);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="participantes-${eventoId}.csv"`);
+    res.send(csv);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_EDICAO)
+  @Post("participantes/email")
+  async enviarEmailParticipantes(@Param("id") eventoId: string, @Body() dto: EnviarEmailParticipantesDto) {
+    return this.participantesService.enviarEmailParticipantes(eventoId, dto.mensagem);
+  }
+}
+
+/** Fora de /events/:id de propósito — é uma listagem cross-evento a partir do email do usuário logado, não algo escopado a um evento específico. */
+@Controller("tickets")
+export class MeusIngressosController {
+  constructor(
+    private readonly ticketsService: TicketsService,
+    private readonly ingressoMapper: IngressoMapper,
+  ) {}
+
+  @Get("meus")
+  async meusIngressos(@CurrentUser() usuario: AuthenticatedUser) {
+    const ingressos = await this.ticketsService.listarPorCompradorEmail(usuario.email);
+    return ingressos.map((ingresso) => this.ingressoMapper.toMeuIngressoResponse(ingresso));
   }
 }

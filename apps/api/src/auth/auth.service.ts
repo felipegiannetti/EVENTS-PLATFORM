@@ -3,15 +3,23 @@ import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
-import type { AuthResponse } from "@events-platform/shared-types";
+import type { AtualizarPerfilInput, AuthResponse, RegisterInput } from "@events-platform/shared-types";
 import { USUARIO_REPOSITORY, type UsuarioRepository } from "./repository/usuario.repository";
 import {
   REFRESH_TOKEN_REPOSITORY,
   type RefreshTokenRepository,
 } from "./repository/refresh-token.repository";
+import {
+  PAPEL_ACESSO_REPOSITORY,
+  type PapelAcessoRepository,
+} from "../events/repository/papel-acesso.repository";
 import { UsuarioModel } from "./model/usuario.model";
 import { EmailJaCadastradoException } from "./exceptions/email-ja-cadastrado.exception";
+import { DocumentoJaCadastradoException } from "./exceptions/documento-ja-cadastrado.exception";
 import { RefreshTokenInvalidoException } from "./exceptions/refresh-token-invalido.exception";
+import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontrado.exception";
+import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.exception";
+import { ContaComEventosException } from "./exceptions/conta-com-eventos.exception";
 
 export interface SessaoContexto {
   ip?: string;
@@ -26,20 +34,86 @@ export class AuthService {
     @Inject(USUARIO_REPOSITORY) private readonly usuarioRepository: UsuarioRepository,
     @Inject(REFRESH_TOKEN_REPOSITORY)
     private readonly refreshTokenRepository: RefreshTokenRepository,
+    @Inject(PAPEL_ACESSO_REPOSITORY)
+    private readonly papelAcessoRepository: PapelAcessoRepository,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {
     this.refreshTtlDays = Number(this.config.get("JWT_REFRESH_TTL_DAYS") ?? 90);
   }
 
-  async registrar(nome: string, email: string, senha: string): Promise<UsuarioModel> {
-    const existente = await this.usuarioRepository.buscarPorEmail(email);
-    if (existente) {
+  async registrar(dados: RegisterInput): Promise<UsuarioModel> {
+    const [existentePorEmail, existentePorDocumento] = await Promise.all([
+      this.usuarioRepository.buscarPorEmail(dados.email),
+      this.usuarioRepository.buscarPorDocumento(dados.documento),
+    ]);
+    if (existentePorEmail) {
       throw new EmailJaCadastradoException();
     }
+    if (existentePorDocumento) {
+      throw new DocumentoJaCadastradoException();
+    }
 
-    const senhaHash = await argon2.hash(senha, { type: argon2.argon2id });
-    return this.usuarioRepository.criar({ nome, email, senhaHash });
+    const senhaHash = await argon2.hash(dados.senha, { type: argon2.argon2id });
+    return this.usuarioRepository.criar({
+      nome: dados.nome,
+      email: dados.email,
+      senhaHash,
+      tipoPessoa: dados.tipoPessoa,
+      documento: dados.documento,
+      dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
+    });
+  }
+
+  async buscarPerfil(usuarioId: string): Promise<UsuarioModel> {
+    const usuario = await this.usuarioRepository.buscarPorId(usuarioId);
+    if (!usuario) {
+      throw new UsuarioNaoEncontradoException();
+    }
+    return usuario;
+  }
+
+  async atualizarPerfil(usuarioId: string, input: AtualizarPerfilInput): Promise<UsuarioModel> {
+    return this.usuarioRepository.atualizar(usuarioId, {
+      nome: input.nome,
+      dataNascimento: input.dataNascimento ? new Date(input.dataNascimento) : undefined,
+    });
+  }
+
+  async alterarEmail(usuarioId: string, novoEmail: string, senhaAtual: string): Promise<UsuarioModel> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
+      throw new SenhaAtualInvalidaException();
+    }
+    const existente = await this.usuarioRepository.buscarPorEmail(novoEmail);
+    if (existente && existente.id !== usuarioId) {
+      throw new EmailJaCadastradoException();
+    }
+    return this.usuarioRepository.atualizar(usuarioId, { email: novoEmail });
+  }
+
+  /** Troca a senha e revoga todas as sessões (força relogin em outros dispositivos — padrão de segurança). */
+  async alterarSenha(usuarioId: string, senhaAtual: string, novaSenha: string): Promise<void> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
+      throw new SenhaAtualInvalidaException();
+    }
+    const senhaHash = await argon2.hash(novaSenha, { type: argon2.argon2id });
+    await this.usuarioRepository.atualizar(usuarioId, { senhaHash });
+    await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
+  }
+
+  async deletarConta(usuarioId: string, senhaAtual: string): Promise<void> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
+      throw new SenhaAtualInvalidaException();
+    }
+    const papeis = await this.papelAcessoRepository.listarPorUsuario(usuarioId);
+    if (papeis.some((papel) => papel.papel === "owner")) {
+      throw new ContaComEventosException();
+    }
+    await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
+    await this.usuarioRepository.remover(usuarioId);
   }
 
   async validarCredenciais(email: string, senha: string): Promise<UsuarioModel | null> {

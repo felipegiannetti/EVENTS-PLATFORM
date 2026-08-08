@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import type { ConvidarAcessoInput, PapelAcessoResponse } from "@events-platform/shared-types";
 
 type PapelConvidavel = ConvidarAcessoInput["papel"];
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
+import { useNavigationLoading } from "@/lib/navigation-loading";
 import { convidarAcesso, listarAcessos, removerAcesso } from "@/lib/events-client";
 
 const PAPEIS_CONVIDAVEIS: { valor: PapelConvidavel; rotulo: string }[] = [
@@ -25,6 +27,11 @@ export default function AcessoEventoPage() {
 
 function GestaoAcesso({ token }: { token: string }) {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const emAssistente = searchParams.get("wizard") === "1";
+  const proximaEtapa = `/eventos/${id}/detalhes${emAssistente ? "?wizard=1" : ""}`;
+  const { iniciar } = useNavigationLoading();
   const [acessos, setAcessos] = useState<PapelAcessoResponse[] | null>(null);
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState<PapelConvidavel>("gestor");
@@ -68,7 +75,7 @@ function GestaoAcesso({ token }: { token: string }) {
 
   return (
     <main className="page-shell max-w-5xl">
-      <span className="eyebrow">Equipe</span>
+      <span className="eyebrow">{emAssistente ? "Etapa 3 de 4 · Equipe" : "Equipe"}</span>
       <h1 className="page-title">Quem tem acesso</h1>
       <p className="page-description">
         Convide gestores, visualizadores ou operadores de check-in — cada um só enxerga e faz o
@@ -130,8 +137,8 @@ function GestaoAcesso({ token }: { token: string }) {
               ))}
             </Select>
           </div>
-          <Button type="submit" disabled={enviando}>
-            {enviando ? "Convidando..." : "Convidar"}
+          <Button type="submit" loading={enviando}>
+            Convidar
           </Button>
         </form>
         {erro && <p className="mt-3 text-sm text-danger">{erro}</p>}
@@ -139,6 +146,22 @@ function GestaoAcesso({ token }: { token: string }) {
           A pessoa precisa já ter uma conta criada no RARO Tickets com esse email.
         </p>
       </Card>
+
+      {emAssistente && (
+        <div className="mt-6 flex flex-col-reverse items-center gap-3 sm:flex-row sm:justify-end">
+          <Link href={proximaEtapa} onClick={() => iniciar()} className="text-sm text-muted hover:text-foreground">
+            Pular por enquanto
+          </Link>
+          <Button
+            onClick={() => {
+              iniciar();
+              router.push(proximaEtapa);
+            }}
+          >
+            Continuar
+          </Button>
+        </div>
+      )}
     </main>
   );
 }

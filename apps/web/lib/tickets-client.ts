@@ -1,8 +1,50 @@
-import type { EmitirIngressoInput, IngressoResponse } from "@events-platform/shared-types";
-import { apiFetch } from "./api-client";
+import type { EmitirIngressoInput, IngressoResponse, MeuIngressoResponse } from "@events-platform/shared-types";
+import { ApiError, apiFetch } from "./api-client";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 export function listarIngressos(eventoId: string, token: string) {
   return apiFetch<IngressoResponse[]>(`/events/${eventoId}/ingressos`, {}, token);
+}
+
+export function listarMeusIngressos(token: string) {
+  return apiFetch<MeuIngressoResponse[]>("/tickets/meus", {}, token);
+}
+
+export function checkin(eventoId: string, qrToken: string, token: string) {
+  return apiFetch<IngressoResponse>(
+    `/events/${eventoId}/checkin`,
+    { method: "POST", body: JSON.stringify({ qrToken }) },
+    token,
+  );
+}
+
+/** CSV precisa do Authorization header, então não dá pra ser um <a href> simples — baixa via fetch e dispara o download por um <a> temporário. */
+export async function baixarParticipantesCsv(eventoId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/events/${eventoId}/participantes/csv`, {
+    credentials: "include",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(body?.error?.code ?? "ERRO_DESCONHECIDO", body?.error?.message ?? "Não foi possível exportar o CSV.");
+  }
+  const texto = await res.text();
+  const blob = new Blob([texto], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `participantes-${eventoId}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function enviarEmailParticipantes(eventoId: string, mensagem: string, token: string) {
+  return apiFetch<{ enviadosPara: number }>(
+    `/events/${eventoId}/participantes/email`,
+    { method: "POST", body: JSON.stringify({ mensagem }) },
+    token,
+  );
 }
 
 export function emitirIngresso(

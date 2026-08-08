@@ -16,4 +16,6 @@ export interface RefreshTokenRepository {
   buscarPorHash(tokenHash: string): Promise<RefreshTokenModel | null>;
   revogar(id: string): Promise<void>;
   revogarFamilia(familyId: string): Promise<void>;
+  /** Todas as sessões do usuário, não só uma família — usado ao trocar a senha (força relogin em outros dispositivos). */
+  revogarTodasDoUsuario(usuarioId: string): Promise<void>;
 }

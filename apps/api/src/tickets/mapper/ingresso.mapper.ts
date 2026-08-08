@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import type { IngressoResponse } from "@events-platform/shared-types";
+import type { IngressoResponse, MeuIngressoResponse } from "@events-platform/shared-types";
 import type { IngressoModel } from "../model/ingresso.model";
+import type { MeuIngressoModel } from "../model/meu-ingresso.model";
 
 @Injectable()
 export class IngressoMapper {
@@ -13,7 +14,18 @@ export class IngressoMapper {
       status: model.status,
       qrToken: model.qrToken,
       transferivel: model.transferivel,
+      compradorNome: model.compradorNome,
+      compradorEmail: model.compradorEmail,
+      compradorDocumento: model.compradorDocumento,
       criadoEm: model.criadoEm.toISOString(),
+    };
+  }
+
+  toMeuIngressoResponse(model: MeuIngressoModel): MeuIngressoResponse {
+    return {
+      ...this.toResponse(model),
+      eventoNome: model.eventoNome,
+      eventoData: model.eventoData.toISOString(),
     };
   }
 }

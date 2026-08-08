@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { BANCOS_BRASIL } from "@events-platform/shared-types";
 import { ApiError } from "@/lib/api-client";
-import { cadastrarContaBancaria } from "@/lib/finance-client";
+import { useNavigationLoading } from "@/lib/navigation-loading";
+import { formatarCpfOuCnpj } from "@/lib/formatters";
+import { buscarContaBancaria, cadastrarContaBancaria } from "@/lib/finance-client";
 
 export default function ContaRepassePage() {
   return <ProtectedPage>{(token) => <FormularioContaRepasse token={token} />}</ProtectedPage>;
@@ -19,6 +21,10 @@ export default function ContaRepassePage() {
 function FormularioContaRepasse({ token }: { token: string }) {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emAssistente = searchParams.get("wizard") === "1";
+  const proximaEtapa = `/eventos/${id}/acesso${emAssistente ? "?wizard=1" : ""}`;
+  const { iniciar } = useNavigationLoading();
   const [banco, setBanco] = useState(BANCOS_BRASIL[0].codigo);
   const [agencia, setAgencia] = useState("");
   const [conta, setConta] = useState("");
@@ -27,6 +33,20 @@ function FormularioContaRepasse({ token }: { token: string }) {
   const [documentoTitular, setDocumentoTitular] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    buscarContaBancaria(id, token)
+      .then((conta) => {
+        setBanco(conta.banco);
+        setAgencia(conta.agencia);
+        setConta(conta.conta);
+        setTipoConta(conta.tipoConta);
+        setTitular(conta.titular);
+        setDocumentoTitular(formatarCpfOuCnpj(conta.documentoTitular));
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, token]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -38,10 +58,10 @@ function FormularioContaRepasse({ token }: { token: string }) {
         { banco, agencia, conta, tipoConta, titular, documentoTitular },
         token,
       );
-      router.push(`/eventos/${id}`);
+      iniciar();
+      router.push(emAssistente ? proximaEtapa : `/eventos/${id}/financeiro`);
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível salvar a conta bancária.");
-    } finally {
       setEnviando(false);
     }
   }
@@ -49,7 +69,7 @@ function FormularioContaRepasse({ token }: { token: string }) {
   return (
     <main className="page-shell max-w-2xl">
       <Card className="p-7 sm:p-9">
-        <p className="eyebrow">Etapa 2 de 2</p>
+        <p className="eyebrow">{emAssistente ? "Etapa 2 de 4" : "Financeiro"}</p>
         <h1 className="page-title !text-3xl">Conta de repasse</h1>
         <p className="page-description">
           É pra essa conta que o valor das vendas deste evento vai ser repassado. Cada evento tem
@@ -106,22 +126,26 @@ function FormularioContaRepasse({ token }: { token: string }) {
             id="documentoTitular"
             label="CPF ou CNPJ do titular"
             required
+            inputMode="numeric"
             placeholder="000.000.000-00 ou 00.000.000/0001-00"
             value={documentoTitular}
-            onChange={(e) => setDocumentoTitular(e.target.value)}
+            onChange={(e) => setDocumentoTitular(formatarCpfOuCnpj(e.target.value))}
           />
           {erro && <p className="text-sm text-danger">{erro}</p>}
-          <Button type="submit" disabled={enviando} className="mt-2 w-full">
-            {enviando ? "Salvando..." : "Salvar e concluir"}
+          <Button type="submit" loading={enviando} className="mt-2 w-full">
+            {emAssistente ? "Salvar e continuar" : "Salvar"}
           </Button>
         </form>
 
-        <Link
-          href={`/eventos/${id}`}
-          className="mt-4 block text-center text-sm text-muted hover:text-foreground"
-        >
-          Cadastrar depois
-        </Link>
+        {emAssistente && (
+          <Link
+            href={proximaEtapa}
+            onClick={() => iniciar()}
+            className="mt-4 block text-center text-sm text-muted hover:text-foreground"
+          >
+            Cadastrar depois
+          </Link>
+        )}
       </Card>
     </main>
   );

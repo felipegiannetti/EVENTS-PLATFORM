@@ -8,6 +8,7 @@ import { nomeDoBanco } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Card } from "@/components/ui/card";
 import { Stat, formatarReais } from "@/components/ui/stat";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { ApiError } from "@/lib/api-client";
 import { buscarContaBancaria, buscarResumoFinanceiro } from "@/lib/finance-client";
 
@@ -48,19 +49,32 @@ function Financeiro({ token }: { token: string }) {
       ) : (
         <>
           <Card className="mt-8 grid grid-cols-2 gap-3 p-3 sm:grid-cols-4">
-            <Stat label="Vendas brutas" value={formatarReais(resumo.vendasBrutas)} />
+            <Stat
+              label="Vendas brutas"
+              value={formatarReais(resumo.vendasBrutas)}
+              ajuda={
+                resumo.taxaPagaPor === "organizador"
+                  ? "Esse evento está configurado pra você absorver a taxa de serviço: ela é descontada do valor do ingresso, então vendas brutas aqui é só o valor dos ingressos."
+                  : "Esse evento está configurado pra o comprador pagar a taxa de serviço por fora: ela é somada ao preço do ingresso, então vendas brutas aqui já inclui esse acréscimo."
+              }
+            />
+            <Stat
+              label="Venda líquida"
+              value={formatarReais(resumo.vendaLiquida)}
+              ajuda={`A plataforma retém ${resumo.percentualTaxaServico}% de taxa de serviço, fixo. ${
+                resumo.percentualDevolvidoAoOrganizador > 0
+                  ? `Um acordo comercial devolve ${resumo.percentualDevolvidoAoOrganizador} ponto(s) percentual(is) pro seu repasse — já refletido aqui.`
+                  : "Não há acordo comercial ativo pra esse evento, então a taxa cheia é retida."
+              } Por isso venda líquida é sempre menor que vendas brutas. Ainda não é dinheiro de verdade — só existe quando o checkout com gateway de pagamento estiver integrado (ingressos cancelados já descontados dos dois valores).`}
+            />
             <Stat label="Ticket médio" value={formatarReais(resumo.ticketMedioBruto)} />
             <Stat label="Ingressos válidos" value={String(resumo.ingressosValidos)} />
-            <Stat label="Cancelados" value={String(resumo.ingressosCancelados)} />
           </Card>
 
           <Card className="mt-5 border-warning/20 bg-warning/5">
-            <div className="flex items-center justify-between gap-4 rounded bg-warning/10 px-3 py-2 text-sm text-warning">
-              <span>
-                Repasse (em processamento / total a receber / total recebido) ainda não está
-                disponível — só existe de verdade quando o checkout com gateway de pagamento
-                estiver integrado.
-              </span>
+            <div className="flex items-center gap-2 rounded bg-warning/10 px-3 py-2 text-sm text-warning">
+              <span>Repasse (em processamento / total a receber / total recebido) ainda não está disponível.</span>
+              <HelpTooltip texto="Só existe de verdade quando o checkout com gateway de pagamento estiver integrado — hoje não há venda paga self-service na plataforma." />
             </div>
           </Card>
         </>

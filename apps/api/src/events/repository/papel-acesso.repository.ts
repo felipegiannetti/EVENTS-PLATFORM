@@ -8,4 +8,6 @@ export interface PapelAcessoRepository {
   remover(usuarioId: string, eventoId: string): Promise<void>;
   buscar(usuarioId: string, eventoId: string): Promise<PapelAcessoModel | null>;
   listarPorEvento(eventoId: string): Promise<PapelAcessoModel[]>;
+  /** Usado antes de deletar uma conta — não dá pra apagar um usuário que ainda é owner de algum evento. */
+  listarPorUsuario(usuarioId: string): Promise<PapelAcessoModel[]>;
 }

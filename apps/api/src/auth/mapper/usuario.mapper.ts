@@ -10,6 +10,9 @@ export class UsuarioMapper {
       nome: model.nome,
       email: model.email,
       papelGlobal: model.papelGlobal,
+      tipoPessoa: model.tipoPessoa,
+      documento: model.documento,
+      dataNascimento: model.dataNascimento ? model.dataNascimento.toISOString().slice(0, 10) : null,
       criadoEm: model.criadoEm.toISOString(),
     };
   }

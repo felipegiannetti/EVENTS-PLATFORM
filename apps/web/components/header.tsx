@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LogOut, Menu, Plus, Search, Ticket, X } from "lucide-react";
+import { LogOut, Menu, Plus, Search, Ticket, User, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useIsEventWorkspace } from "@/lib/event-workspace";
 import { Button } from "@/components/ui/button";
 
 export function Brand({ compact = false }: { compact?: boolean }) {
@@ -25,15 +26,24 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 export function Header() {
   const { accessToken, carregando, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const emWorkspaceDeEvento = useIsEventWorkspace();
 
-  const navItems = accessToken
-    ? [{ href: "/eventos", label: "Meus eventos" }]
-    : [
-        { href: "/eventos/todos", label: "Eventos" },
-        { href: "/#categorias", label: "Categorias" },
-        { href: "/#organizadores", label: "Para organizadores" },
-        { href: "/#como-funciona", label: "Como funciona" },
-      ];
+  if (emWorkspaceDeEvento) {
+    return null;
+  }
+
+  const navPublico = [
+    { href: "/eventos/todos", label: "Eventos" },
+    { href: "/#categorias", label: "Categorias" },
+    { href: "/#como-funciona", label: "Como funciona" },
+  ];
+  const navLogado = [
+    { href: "/eventos", label: "Espaço do organizador" },
+    { href: "/meus-ingressos", label: "Meus ingressos" },
+  ];
+
+  // Navbar completa sempre — logado só ganha itens extras (ex: "Espaço do organizador"), não perde os públicos.
+  const navItems = accessToken ? [...navLogado, ...navPublico] : navPublico;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/10 bg-background/75 backdrop-blur-2xl">
@@ -65,6 +75,14 @@ export function Header() {
             <>
               <Link href="/eventos/novo" className="hidden sm:block">
                 <Button className="gap-2"><Plus size={16} />Criar evento</Button>
+              </Link>
+              <Link
+                href="/perfil"
+                aria-label="Perfil"
+                title="Perfil"
+                className="hidden h-10 w-10 place-items-center rounded-xl border border-border/15 bg-card/70 text-muted shadow-sm transition-all hover:border-primary/30 hover:text-primary sm:grid"
+              >
+                <User size={18} />
               </Link>
               <button
                 type="button"
@@ -108,6 +126,7 @@ export function Header() {
               {accessToken ? (
                 <>
                   <Link href="/eventos/novo" className="flex-1"><Button className="w-full">Criar evento</Button></Link>
+                  <Link href="/perfil"><Button variant="secondary">Perfil</Button></Link>
                   <Button variant="secondary" onClick={() => logout()}>Sair</Button>
                 </>
               ) : (

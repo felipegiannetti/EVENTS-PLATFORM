@@ -1,4 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import type { Response } from "express";
+import { TAMANHO_MAXIMO_BANNER_BYTES } from "@events-platform/shared-types";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
 import { CurrentUser } from "../security/decorators/current-user.decorator";
@@ -9,11 +26,13 @@ import { EventoMapper } from "./mapper/evento.mapper";
 import { LoteMapper } from "./mapper/lote.mapper";
 import { LinkVendaMapper } from "./mapper/link-venda.mapper";
 import { PapelAcessoMapper } from "./mapper/papel-acesso.mapper";
+import { CupomDescontoMapper } from "./mapper/cupom-desconto.mapper";
 import { CriarEventoDto } from "./dto/criar-evento.dto";
 import { AtualizarEventoDto } from "./dto/atualizar-evento.dto";
 import { AtualizarLoteDto, CriarLoteDto } from "./dto/criar-lote.dto";
 import { CriarLinkVendaDto } from "./dto/criar-link-venda.dto";
 import { ConvidarAcessoDto } from "./dto/convidar-acesso.dto";
+import { AtualizarCupomDescontoDto, CriarCupomDescontoDto } from "./dto/criar-cupom-desconto.dto";
 
 const PAPEIS_LEITURA = ["owner", "gestor", "view", "checkin_operator"] as const;
 const PAPEIS_EDICAO = ["owner", "gestor"] as const;
@@ -26,6 +45,7 @@ export class EventsController {
     private readonly loteMapper: LoteMapper,
     private readonly linkVendaMapper: LinkVendaMapper,
     private readonly papelAcessoMapper: PapelAcessoMapper,
+    private readonly cupomDescontoMapper: CupomDescontoMapper,
   ) {}
 
   @Post()
@@ -45,6 +65,21 @@ export class EventsController {
   async listarPublicos() {
     const eventos = await this.eventsService.listarEventosPublicos();
     return eventos.map((evento) => this.eventoMapper.toResponse(evento));
+  }
+
+  /** Rota estática "public/:id" precisa vir antes de ":id" abaixo, senão o Express tentaria casar "public" como um :id. */
+  @Public()
+  @Get("public/:id")
+  async buscarPublico(@Param("id") id: string) {
+    const evento = await this.eventsService.buscarEventoPublico(id);
+    return this.eventoMapper.toResponse(evento);
+  }
+
+  @Public()
+  @Get("public/:id/cupom/:codigo")
+  async validarCupomPublico(@Param("id") id: string, @Param("codigo") codigo: string) {
+    const cupom = await this.eventsService.validarCupomPublico(id, codigo);
+    return this.cupomDescontoMapper.toResponse(cupom);
   }
 
   @UseGuards(EventRoleGuard)
@@ -128,5 +163,65 @@ export class EventsController {
   @Delete(":id/acesso/:usuarioId")
   async removerAcesso(@Param("id") id: string, @Param("usuarioId") usuarioId: string) {
     await this.eventsService.removerAcesso(id, usuarioId);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_LEITURA)
+  @Get(":id/cupons")
+  async listarCupons(@Param("id") id: string) {
+    const cupons = await this.eventsService.listarCupons(id);
+    return cupons.map((cupom) => this.cupomDescontoMapper.toResponse(cupom));
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_EDICAO)
+  @Post(":id/cupons")
+  async criarCupom(@Param("id") id: string, @Body() dto: CriarCupomDescontoDto) {
+    const cupom = await this.eventsService.criarCupom(id, dto);
+    return this.cupomDescontoMapper.toResponse(cupom);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_EDICAO)
+  @Patch(":id/cupons/:cupomId")
+  async atualizarCupom(
+    @Param("id") id: string,
+    @Param("cupomId") cupomId: string,
+    @Body() dto: AtualizarCupomDescontoDto,
+  ) {
+    const cupom = await this.eventsService.atualizarCupom(id, cupomId, dto);
+    return this.cupomDescontoMapper.toResponse(cupom);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_EDICAO)
+  @Delete(":id/cupons/:cupomId")
+  async removerCupom(@Param("id") id: string, @Param("cupomId") cupomId: string) {
+    await this.eventsService.removerCupom(id, cupomId);
+  }
+
+  /** Banner salvo como bytes direto no banco (bytea) — ver docs/architecture/04-modelo-de-dados.md. */
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_EDICAO)
+  @Put(":id/banner")
+  @UseInterceptors(FileInterceptor("arquivo", { limits: { fileSize: TAMANHO_MAXIMO_BANNER_BYTES } }))
+  async atualizarBanner(
+    @Param("id") id: string,
+    @UploadedFile() arquivo: Express.Multer.File,
+  ) {
+    await this.eventsService.atualizarBanner(id, arquivo.buffer, arquivo.mimetype);
+    return { ok: true };
+  }
+
+  @Public()
+  @Get(":id/banner")
+  async buscarBanner(@Param("id") id: string, @Res() res: Response) {
+    const banner = await this.eventsService.buscarBanner(id);
+    if (!banner) {
+      throw new NotFoundException("Este evento não tem banner cadastrado.");
+    }
+    res.setHeader("Content-Type", banner.mimeType);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(banner.bytes);
   }
 }

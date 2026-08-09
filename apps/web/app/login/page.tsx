@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useNavigationLoading } from "@/lib/navigation-loading";
 import { ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { AuthShell } from "@/components/auth-shell";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { iniciar } = useNavigationLoading();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -22,12 +24,12 @@ export default function LoginPage() {
     e.preventDefault();
     setErro(null);
     setEnviando(true);
+    iniciar();
     try {
       await login({ email, senha });
       router.push("/");
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível entrar.");
-    } finally {
       setEnviando(false);
     }
   }
@@ -53,8 +55,8 @@ export default function LoginPage() {
             onChange={(e) => setSenha(e.target.value)}
           />
           {erro && <p className="text-sm text-danger">{erro}</p>}
-          <Button type="submit" disabled={enviando} className="mt-1 w-full">
-            {enviando ? "Entrando..." : "Entrar"}
+          <Button type="submit" loading={enviando} className="mt-1 w-full">
+            Entrar
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-muted">

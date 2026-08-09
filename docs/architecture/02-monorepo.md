@@ -16,3 +16,5 @@
 ```
 
 Compartilhar `shared-types` entre os três apps evita divergência de contrato de API (o maior risco de bug em times pequenos com múltiplos front-ends).
+
+**Status de implementação desta estrutura**: `apps/web`, `apps/api` e `packages/shared-types` existem e são usados de verdade (ver [docs/implementation/README.md](../implementation/README.md)); `apps/mobile` é só o esqueleto Expo original (chama `/health`, sem telas). `packages/config` existe (eslint/tsconfig/tailwind presets). **`packages/ui` e `infra/cdk` ainda não existem** — hoje `apps/web` tem seus próprios componentes em `apps/web/components/` (não compartilhados com `apps/mobile`, que não tem UI nenhuma ainda), e não há nenhuma infraestrutura como código provisionada (a aplicação roda só localmente, ver [desenvolvimento-local.md](../implementation/desenvolvimento-local.md)).

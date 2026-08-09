@@ -70,7 +70,7 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 ## 4. Entidades principais (visão de dados, alto nível)
 
 - **Evento** → tem Lotes, Links de venda, Papéis de acesso (Gestor/View)
-- **Ingresso** → pertence a um Evento e um Lote, tem status (válido/usado/cancelado), QR code único, flag de transferível ou não
+- **Ingresso** → pertence a um Evento e um Lote, tem status (pendente/válido/usado/cancelado — "pendente" é reservado para quando existir checkout assíncrono, ainda não produzido por nenhum fluxo hoje), QR code único, flag de transferível ou não
 - **Lista Off** → CPFs vinculados a um Evento, com status de uso
 - **Link de venda** → rastreia origem da venda, usado para gerar parcial segmentada
 - **Usuário** → pode ser Organizador, Gestor, View, Operador de check-in, ou Admin geral

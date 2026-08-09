@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { LoginInput, RegisterInput } from "@events-platform/shared-types";
 import { loginRequest, logoutRequest, refreshRequest, registerRequest } from "./auth-client";
+import { registrarOuvinteDeRenovacao } from "./token-store";
 
 interface AuthContextValue {
   accessToken: string | null;
@@ -28,6 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((sessao) => setAccessToken(sessao.accessToken))
       .catch(() => setAccessToken(null))
       .finally(() => setCarregando(false));
+
+    registrarOuvinteDeRenovacao(setAccessToken);
+    return () => registrarOuvinteDeRenovacao(null);
   }, []);
 
   async function login(input: LoginInput) {

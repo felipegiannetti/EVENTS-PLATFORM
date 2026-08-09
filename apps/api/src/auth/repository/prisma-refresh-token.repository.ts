@@ -35,6 +35,13 @@ export class PrismaRefreshTokenRepository implements RefreshTokenRepository {
     });
   }
 
+  async revogarTodasDoUsuario(usuarioId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { usuarioId, revogadoEm: null },
+      data: { revogadoEm: new Date() },
+    });
+  }
+
   private toModel(token: RefreshToken): RefreshTokenModel {
     return new RefreshTokenModel(
       token.id,

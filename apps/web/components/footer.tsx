@@ -1,8 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { Globe, Share2, Mail } from "lucide-react";
 import { Brand } from "@/components/header";
+import { useIsEventWorkspace } from "@/lib/event-workspace";
 
 export function Footer() {
+  const emWorkspaceDeEvento = useIsEventWorkspace();
+  if (emWorkspaceDeEvento) {
+    return null;
+  }
+
   return (
     <footer className="mt-20 border-t border-border/10 bg-card/40">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_repeat(3,1fr)]">
@@ -26,7 +34,7 @@ export function Footer() {
           </div>
         ))}
       </div>
-      <div className="border-t border-border/10 px-5 py-5 text-center text-xs text-muted">© 2026 Novyx. Todos os direitos reservados.</div>
+      <div className="border-t border-border/10 px-5 py-5 text-center text-xs text-muted">© 2026 RARO Tickets. Todos os direitos reservados.</div>
     </footer>
   );
 }

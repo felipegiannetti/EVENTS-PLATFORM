@@ -4,7 +4,8 @@ export type PapelGlobal = (typeof PAPEL_GLOBAL)[number];
 export const PAPEL_EVENTO = ["owner", "gestor", "view", "checkin_operator"] as const;
 export type PapelEvento = (typeof PAPEL_EVENTO)[number];
 
-export const STATUS_INGRESSO = ["valido", "usado", "cancelado"] as const;
+/** "pendente" ainda não é produzido por nenhum fluxo (não existe checkout/pagamento assíncrono) — existe só pra a UI (tela de Participantes) já estar pronta pra quando o gateway de pagamento entrar. */
+export const STATUS_INGRESSO = ["pendente", "valido", "usado", "cancelado"] as const;
 export type StatusIngresso = (typeof STATUS_INGRESSO)[number];
 
 export const TAXA_PAGA_POR = ["comprador", "organizador"] as const;
@@ -33,3 +34,9 @@ export const ROTULO_CATEGORIA_EVENTO: Record<CategoriaEvento, string> = {
 
 export const TIPO_CONTA_BANCARIA = ["corrente", "poupanca"] as const;
 export type TipoContaBancaria = (typeof TIPO_CONTA_BANCARIA)[number];
+
+export const TIPO_PESSOA = ["fisica", "juridica"] as const;
+export type TipoPessoa = (typeof TIPO_PESSOA)[number];
+
+export const TIPO_DESCONTO_CUPOM = ["percentual", "valor_fixo"] as const;
+export type TipoDescontoCupom = (typeof TIPO_DESCONTO_CUPOM)[number];

@@ -49,6 +49,14 @@ export class PrismaPapelAcessoRepository implements PapelAcessoRepository {
     return registros.map((registro) => this.toModel(registro));
   }
 
+  async listarPorUsuario(usuarioId: string): Promise<PapelAcessoModel[]> {
+    const registros = await this.prisma.papelAcesso.findMany({
+      where: { usuarioId },
+      include: INCLUDE_USUARIO,
+    });
+    return registros.map((registro) => this.toModel(registro));
+  }
+
   private toModel(registro: PapelAcessoComUsuario): PapelAcessoModel {
     return new PapelAcessoModel(
       registro.usuarioId,

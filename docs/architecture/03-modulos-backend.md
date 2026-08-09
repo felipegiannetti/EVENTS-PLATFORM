@@ -2,15 +2,16 @@
 
 # Módulos do backend (NestJS)
 
-| Módulo | Responsabilidade | Observação de escala/segurança |
-|---|---|---|
-| `auth` | Login, JWT + refresh token, RBAC por papel **e por evento** (owner/gestor/view/checkin_operator/admin_geral) | Guards do Nest checam papel por evento, não só global |
-| `events` | CRUD de evento, lotes, links de venda, papéis de acesso | — |
-| `tickets` | Emissão, status, QR, trava de transferência (configurável por evento) | Constraint única no banco para evitar duplicidade |
-| `checkout` (compra/pagamento) | Fluxo de compra, integração com gateway (adapter plugável), fila assíncrona | Webhook responde rápido, emissão do ingresso roda em worker via SQS/BullMQ; idempotency key no checkout |
-| `checkin` | Validação de QR em tempo real (sempre online, sem fallback offline — ver [07-app-checkin.md](07-app-checkin.md)), idempotência | Transação com lock otimista: 2ª leitura do mesmo QR falha visivelmente |
-| `guestlist` (lista off) | CPFs cadastrados por evento, status de uso | Rate limit na busca por CPF (evita varredura) |
-| `reports` | Parciais em CSV, envio agendado por e-mail segmentado por link | Job agendado via BullMQ + SES |
-| `admin` | Painel superadmin NOVYX: feature flags globais, visão de todos os eventos, configuração de `AcordoComercial` (split de taxa por organizador) | Rota isolada, só acessível por `admin_geral` |
-| `notifications` | E-mail (SES) e futuramente push (SNS) para o app | — |
-| `audit-log` | Trilha de auditoria (quem, quando, onde, dispositivo) | Obrigatório para check-in e edições de evento |
+| Módulo | Responsabilidade | Observação de escala/segurança | Status |
+|---|---|---|---|
+| `auth` | Login, JWT + refresh token, RBAC por papel **e por evento** (owner/gestor/view/checkin_operator/admin_geral) | Guards do Nest checam papel por evento, não só global | **Implementado** — `apps/api/src/auth/` |
+| `events` | CRUD de evento, lotes, links de venda, papéis de acesso, cupons de desconto | — | **Implementado** — `apps/api/src/events/` (inclui cupons, banner, endereço, 18+) |
+| `tickets` | Emissão manual, status (`pendente`/`valido`/`usado`/`cancelado`), QR, edição/reenvio de email, check-in, participantes (CSV + e-mail em massa) | Constraint única no banco (`qrToken`) evita duplicidade; QR assinado HMAC | **Implementado** — `apps/api/src/tickets/` (o check-in vive aqui dentro, não é módulo próprio — ver abaixo) |
+| `finance` | Conta de repasse por evento e resumo financeiro (vendas brutas/líquidas, taxa, acordo comercial aplicado) | Cálculo agregado direto de `Ingresso`+`Lote`, sem passar por gateway real | **Implementado** — `apps/api/src/finance/`. Só leitura de `AcordoComercial`: não existe endpoint/tela pra criar ou editar um acordo (ver observação abaixo e [11-roadmap.md](11-roadmap.md)) |
+| `checkout` (compra/pagamento) | Fluxo de compra, integração com gateway (adapter plugável), fila assíncrona | Webhook responde rápido, emissão do ingresso roda em worker via SQS/BullMQ; idempotency key no checkout | **Não implementado.** Não existe compra self-service — toda emissão hoje é manual pelo organizador (`POST /events/:id/lotes/:loteId/ingressos`) |
+| `checkin` | Validação de QR em tempo real (sempre online, sem fallback offline — ver [07-app-checkin.md](07-app-checkin.md)), idempotência | Transação com lock otimista: 2ª leitura do mesmo QR falha visivelmente | **Implementado, mas não como módulo próprio** — é a rota `POST /events/:id/checkin` dentro do módulo `tickets` (`TicketsController`/`TicketsService`), chamada pela tela `apps/web/app/eventos/[id]/checkin/page.tsx` (scanner via câmera com `jsQR`, ou leitor USB). O app React Native de check-in descrito aqui **não existe** — a validação hoje só acontece pelo navegador |
+| `guestlist` (lista off) | CPFs cadastrados por evento, status de uso | Rate limit na busca por CPF (evita varredura) | **Não implementado.** O modelo `ListaOff` existe no schema do Prisma (ver [04-modelo-de-dados.md](04-modelo-de-dados.md)) mas não tem nenhum controller/service — nenhuma rota de API o usa |
+| `reports` | Parciais em CSV, envio agendado por e-mail segmentado por link | Job agendado via BullMQ + SES | **Parcialmente implementado, sob outro nome.** Exportação CSV e envio de e-mail em massa existem, mas como parte do módulo `tickets`/`ParticipantesService` (`GET /events/:id/participantes/csv`, `POST /events/:id/participantes/email`), sob demanda — não há agendamento nem segmentação por link de venda |
+| `admin` | Painel superadmin NOVYX: feature flags globais, visão de todos os eventos, configuração de `AcordoComercial` (split de taxa por organizador) | Rota isolada, só acessível por `admin_geral` | **Não implementado.** Não existe controller/módulo `admin`, nem tela no frontend. `FeatureFlag` também existe só no schema, sem uso. Configurar um `AcordoComercial` hoje exige inserir a linha direto no banco (Prisma Studio) — é o maior gap entre o modelo financeiro desenhado e o que dá pra operar pela UI |
+| `notifications` | E-mail (SES) e futuramente push (SNS) para o app | — | **Implementado de forma mais simples**: `apps/api/src/infra/mail/mail.service.ts` usa SMTP via `nodemailer` (não SES), configurado por env (`MAIL_HOST`/`MAIL_PORT`/`MAIL_USER`/`MAIL_PASS`/`MAIL_FROM`). Se `MAIL_HOST` não estiver configurado, o envio falha com erro explícito em vez de fingir que enviou. Push não existe |
+| `audit-log` | Trilha de auditoria (quem, quando, onde, dispositivo) | Obrigatório para check-in e edições de evento | **Não implementado.** O modelo `AuditLog` existe no schema mas nenhum código grava nele |

@@ -6,15 +6,32 @@ export const EVENTO_REPOSITORY = Symbol("EVENTO_REPOSITORY");
 export interface CriarEventoData {
   nome: string;
   data: Date;
+  dataFim?: Date;
   cidade: string;
   estado: string;
   pais: string;
+  rua: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cep: string;
+  somenteMaioresDeIdade: boolean;
   categoria: CategoriaEvento;
   transferivel: boolean;
   taxaPagaPor: TaxaPagaPor;
+  publicado: boolean;
+  descricao?: string;
+  contatoNome?: string;
+  contatoEmail?: string;
+  contatoTelefone?: string;
 }
 
 export type AtualizarEventoData = Partial<CriarEventoData>;
+
+export interface BannerEvento {
+  bytes: Buffer;
+  mimeType: string;
+}
 
 export interface EventoRepository {
   criar(data: CriarEventoData): Promise<EventoModel>;
@@ -22,4 +39,7 @@ export interface EventoRepository {
   atualizar(id: string, data: AtualizarEventoData): Promise<EventoModel>;
   listarPorUsuario(usuarioId: string): Promise<EventoModel[]>;
   listarPublicos(): Promise<EventoModel[]>;
+  /** Bytes salvos direto no Postgres (bytea) — não em storage externo. Ver docs/architecture/04-modelo-de-dados.md. */
+  atualizarBanner(id: string, bytes: Buffer, mimeType: string): Promise<void>;
+  buscarBanner(id: string): Promise<BannerEvento | null>;
 }

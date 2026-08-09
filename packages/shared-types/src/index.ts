@@ -8,5 +8,7 @@ export * from "./schemas/papel-acesso.schema";
 export * from "./schemas/ingresso.schema";
 export * from "./schemas/conta-bancaria.schema";
 export * from "./schemas/resumo-financeiro.schema";
+export * from "./schemas/cupom-desconto.schema";
 export * from "./data/bancos-brasil";
+export * from "./data/paises";
 export * from "./validators/documento";

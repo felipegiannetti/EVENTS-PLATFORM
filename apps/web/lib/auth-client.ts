@@ -1,4 +1,13 @@
-import type { AuthResponse, LoginInput, RegisterInput } from "@events-platform/shared-types";
+import type {
+  AlterarEmailInput,
+  AlterarSenhaInput,
+  AtualizarPerfilInput,
+  AuthResponse,
+  DeletarContaInput,
+  LoginInput,
+  RegisterInput,
+  UsuarioResponse,
+} from "@events-platform/shared-types";
 import { apiFetch } from "./api-client";
 
 export function registerRequest(input: RegisterInput) {
@@ -24,5 +33,41 @@ export function logoutRequest(accessToken: string) {
     "/auth/logout",
     { method: "POST", body: JSON.stringify({}) },
     accessToken,
+  );
+}
+
+export function buscarPerfil(token: string) {
+  return apiFetch<UsuarioResponse>("/auth/me", {}, token);
+}
+
+export function atualizarPerfil(input: AtualizarPerfilInput, token: string) {
+  return apiFetch<UsuarioResponse>(
+    "/auth/me",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export function alterarEmail(input: AlterarEmailInput, token: string) {
+  return apiFetch<UsuarioResponse>(
+    "/auth/me/email",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export function alterarSenha(input: AlterarSenhaInput, token: string) {
+  return apiFetch<void>(
+    "/auth/me/senha",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export function deletarConta(input: DeletarContaInput, token: string) {
+  return apiFetch<void>(
+    "/auth/me",
+    { method: "DELETE", body: JSON.stringify(input) },
+    token,
   );
 }

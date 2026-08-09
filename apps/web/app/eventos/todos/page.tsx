@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowRight, CalendarDays, MapPin, Search, SlidersHorizontal, Sparkles, X,
 } from "lucide-react";
@@ -12,7 +13,8 @@ import {
   type CategoriaEvento,
   type EventoResponse,
 } from "@events-platform/shared-types";
-import { listarEventosPublicos } from "@/lib/events-client";
+import { listarEventosPublicos, urlBannerEvento } from "@/lib/events-client";
+import { LocationFilterModal } from "@/components/location-filter-modal";
 
 const categoryImages: Record<CategoriaEvento, string> = {
   shows: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=85",
@@ -109,7 +111,7 @@ function CatalogoEventos() {
           <div className="mb-3 flex items-center justify-between"><p className="flex items-center gap-2 text-sm font-semibold text-foreground"><SlidersHorizontal size={17} className="text-primary" /> Filtros</p>{filtrosAtivos && <button onClick={limparFiltros} className="text-xs font-semibold text-primary hover:underline">Limpar tudo</button>}</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="space-y-1.5 text-xs font-semibold text-muted"><span>Categoria</span><select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaEvento | "")} className="h-11 w-full rounded-xl border border-border/15 bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary"><option value="">Todas as categorias</option>{categoriasDisponiveis.map(({ valor, quantidade }) => <option key={valor} value={valor}>{ROTULO_CATEGORIA_EVENTO[valor]} ({quantidade})</option>)}</select></label>
-            <label className="space-y-1.5 text-xs font-semibold text-muted"><span>Cidade, estado e país</span><select value={localizacao} onChange={(e) => setLocalizacao(e.target.value)} className="h-11 w-full rounded-xl border border-border/15 bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary"><option value="">Todas as localizações</option>{localizacoesDisponiveis.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label className="space-y-1.5 text-xs font-semibold text-muted"><span>Cidade, estado e país</span><LocationFilterModal localizacoes={localizacoesDisponiveis} valor={localizacao} onSelecionar={setLocalizacao} /></label>
             <label className="space-y-1.5 text-xs font-semibold text-muted"><span>Data do evento</span><input type="date" value={dataSelecionada} onChange={(e) => setDataSelecionada(e.target.value)} className="h-11 w-full rounded-xl border border-border/15 bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary" /></label>
             <label className="space-y-1.5 text-xs font-semibold text-muted"><span>Ordenar por</span><select value={ordenacao} onChange={(e) => setOrdenacao(e.target.value as Ordenacao)} className="h-11 w-full rounded-xl border border-border/15 bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary"><option value="data_asc">Data mais próxima</option><option value="data_desc">Data mais distante</option><option value="nome">Nome do evento</option></select></label>
           </div>
@@ -125,7 +127,8 @@ function CatalogoEventos() {
 
 function EventCard({ evento }: { evento: EventoResponse }) {
   const date = new Date(evento.data);
-  return <article className="group overflow-hidden rounded-2xl border border-border/10 bg-card shadow-card transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-glow"><div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: `url(${categoryImages[evento.categoria]})` }}><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><span className="absolute bottom-3 left-3 rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-bold text-slate-900">{ROTULO_CATEGORIA_EVENTO[evento.categoria]}</span></div><div className="p-5"><h3 className="text-lg font-semibold tracking-tight text-foreground">{evento.nome}</h3><p className="mt-4 flex items-center gap-2 text-sm text-muted"><CalendarDays size={15} className="text-primary" />{date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</p><p className="mt-2 flex items-center gap-2 text-sm text-muted"><MapPin size={15} className="text-primary" />{formatarLocalizacaoEvento(evento)}</p></div></article>;
+  const imagemFundo = evento.temBanner ? urlBannerEvento(evento.id) : categoryImages[evento.categoria];
+  return <Link href={`/e/${evento.id}`} className="group block overflow-hidden rounded-2xl border border-border/10 bg-card shadow-card transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-glow"><div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: `url(${imagemFundo})` }}>{/* evento.temBanner: imagem própria salva como bytes no banco; senão foto de estoque por categoria */}<div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><span className="absolute bottom-3 left-3 rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-bold text-slate-900">{ROTULO_CATEGORIA_EVENTO[evento.categoria]}</span></div><div className="p-5"><h3 className="text-lg font-semibold tracking-tight text-foreground">{evento.nome}</h3><p className="mt-4 flex items-center gap-2 text-sm text-muted"><CalendarDays size={15} className="text-primary" />{date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</p><p className="mt-2 flex items-center gap-2 text-sm text-muted"><MapPin size={15} className="text-primary" />{formatarLocalizacaoEvento(evento)}</p></div></Link>;
 }
 
 function CatalogSkeleton({ compact = false }: { compact?: boolean }) {

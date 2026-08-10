@@ -24,12 +24,16 @@ export function Footer() {
         {[
           ["Explore", ["Eventos", "Categorias", "Destaques"]],
           ["Organizadores", ["Criar evento", "Gestão", "Financeiro"]],
-          ["RARO Tickets", ["Sobre", "Privacidade", "Ajuda"]],
+          ["RARO Tickets", ["Sobre", "Políticas", "Ajuda"]],
         ].map(([title, links]) => (
           <div key={title as string}>
             <p className="text-sm font-semibold text-foreground">{title}</p>
             <div className="mt-4 flex flex-col gap-3">
-              {(links as string[]).map((label) => <Link key={label} href="#" className="text-sm text-muted transition-colors hover:text-primary">{label}</Link>)}
+              {(links as string[]).map((label) => (
+                <Link key={label} href={label === "Políticas" ? "/politicas" : "#"} className="text-sm text-muted transition-colors hover:text-primary">
+                  {label}
+                </Link>
+              ))}
             </div>
           </div>
         ))}

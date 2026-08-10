@@ -25,6 +25,7 @@ const SELECT_SEM_BANNER = {
   somenteMaioresDeIdade: true,
   categoria: true,
   transferivel: true,
+  prazoTransferenciaHoras: true,
   taxaPagaPor: true,
   publicado: true,
   descricao: true,
@@ -51,6 +52,7 @@ type EventoSemBanner = {
   somenteMaioresDeIdade: boolean;
   categoria: EventoModel["categoria"];
   transferivel: boolean;
+  prazoTransferenciaHoras: number | null;
   taxaPagaPor: EventoModel["taxaPagaPor"];
   publicado: boolean;
   descricao: string | null;
@@ -139,6 +141,7 @@ export class PrismaEventoRepository implements EventoRepository {
       evento.somenteMaioresDeIdade,
       evento.categoria,
       evento.transferivel,
+      evento.prazoTransferenciaHoras,
       evento.taxaPagaPor,
       evento.publicado,
       evento.descricao,

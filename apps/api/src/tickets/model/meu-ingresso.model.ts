@@ -16,6 +16,7 @@ export class MeuIngressoModel extends IngressoModel {
       ingresso.status,
       ingresso.qrToken,
       ingresso.transferivel,
+      ingresso.cancelamentoFlexivel,
       ingresso.compradorNome,
       ingresso.compradorEmail,
       ingresso.compradorDocumento,

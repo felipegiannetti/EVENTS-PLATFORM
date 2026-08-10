@@ -55,6 +55,8 @@ function FormularioDetalhes({ token }: { token: string }) {
   const [bairro, setBairro] = useState("");
   const [cep, setCep] = useState("");
   const [somenteMaioresDeIdade, setSomenteMaioresDeIdade] = useState(false);
+  const [transferivel, setTransferivel] = useState(false);
+  const [prazoTransferenciaHoras, setPrazoTransferenciaHoras] = useState("");
 
   // Banner, descrição e contato — sempre editáveis (etapa opcional do assistente ou Configurações)
   const [descricao, setDescricao] = useState("");
@@ -85,6 +87,8 @@ function FormularioDetalhes({ token }: { token: string }) {
         setBairro(atual.bairro ?? "");
         setCep(atual.cep ?? "");
         setSomenteMaioresDeIdade(atual.somenteMaioresDeIdade);
+        setTransferivel(atual.transferivel);
+        setPrazoTransferenciaHoras(atual.prazoTransferenciaHoras != null ? String(atual.prazoTransferenciaHoras) : "");
         setDescricao(atual.descricao ?? "");
         setContatoNome(atual.contatoNome ?? "");
         setContatoEmail(atual.contatoEmail ?? "");
@@ -157,6 +161,8 @@ function FormularioDetalhes({ token }: { token: string }) {
             bairro,
             cep,
             somenteMaioresDeIdade,
+            transferivel,
+            prazoTransferenciaHoras: transferivel && prazoTransferenciaHoras ? Number(prazoTransferenciaHoras) : null,
             descricao: descricao || undefined,
             contatoNome: contatoNome || undefined,
             contatoEmail: contatoEmail || undefined,
@@ -236,6 +242,31 @@ function FormularioDetalhes({ token }: { token: string }) {
                 />
                 <span className="text-sm text-foreground">Evento somente para maiores de 18 anos</span>
               </label>
+
+              <div className="rounded-xl border border-border/15 bg-background/60 px-4 py-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={transferivel}
+                    onChange={(e) => setTransferivel(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="text-sm text-foreground">Permitir que o comprador transfira o ingresso para outra pessoa</span>
+                </label>
+                {transferivel && (
+                  <div className="mt-3 max-w-xs">
+                    <Input
+                      id="prazoTransferenciaHoras"
+                      label="Bloquear transferência a partir de quantas horas antes do evento (opcional)"
+                      type="number"
+                      min={1}
+                      placeholder="Sem limite — deixe em branco"
+                      value={prazoTransferenciaHoras}
+                      onChange={(e) => setPrazoTransferenciaHoras(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="border-t border-border/10 pt-5">
                 <label className="group relative flex h-44 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border/25 bg-background/60">

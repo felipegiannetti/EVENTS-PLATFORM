@@ -7,6 +7,7 @@ import type {
   CriarLinkVendaInput,
   CriarLoteInput,
   CupomDescontoResponse,
+  CupomValidacaoPublicaResponse,
   EventoResponse,
   LinkVendaResponse,
   LoteResponse,
@@ -30,7 +31,15 @@ export function buscarEventoPublico(id: string) {
 }
 
 export function validarCupomPublico(eventoId: string, codigo: string) {
-  return apiFetch<CupomDescontoResponse>(`/events/public/${eventoId}/cupom/${encodeURIComponent(codigo)}`);
+  return apiFetch<CupomValidacaoPublicaResponse>(`/events/public/${eventoId}/cupom/${encodeURIComponent(codigo)}`);
+}
+
+/** Cupom especial: confirma a senha e recebe de volta a mesma forma já com tipo/valor revelados. */
+export function desbloquearCupomPublico(eventoId: string, codigo: string, senha: string) {
+  return apiFetch<CupomValidacaoPublicaResponse>(
+    `/events/public/${eventoId}/cupom/${encodeURIComponent(codigo)}/desbloquear`,
+    { method: "POST", body: JSON.stringify({ senha }) },
+  );
 }
 
 export function urlPublicaEvento(eventoId: string, origin: string, cupom?: string): string {

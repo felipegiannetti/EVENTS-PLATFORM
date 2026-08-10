@@ -12,6 +12,7 @@ export class LoteMapper {
       preco: model.preco,
       quantidade: model.quantidade,
       quantidadeEmitida: model.quantidadeEmitida,
+      especial: model.especial,
     };
   }
 }

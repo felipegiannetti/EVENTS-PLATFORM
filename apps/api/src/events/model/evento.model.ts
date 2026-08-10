@@ -17,6 +17,8 @@ export class EventoModel {
     public readonly somenteMaioresDeIdade: boolean,
     public readonly categoria: CategoriaEvento,
     public readonly transferivel: boolean,
+    /** Só tem efeito quando transferivel=true. null = sem limite de prazo. */
+    public readonly prazoTransferenciaHoras: number | null,
     public readonly taxaPagaPor: TaxaPagaPor,
     /** Visibilidade pra COMPRADORES, não se o evento está "pronto" — o evento existe por completo independente disso. false = privado, não aparece em GET /events/public. */
     public readonly publicado: boolean,

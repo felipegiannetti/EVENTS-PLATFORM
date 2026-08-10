@@ -59,6 +59,10 @@ function ListaMeusIngressos({ token }: { token: string }) {
     setIngressos((atuais) => atuais?.filter((ingresso) => ingresso.id !== id) ?? null);
   }
 
+  function marcarIngressoCancelado(id: string) {
+    setIngressos((atuais) => atuais?.map((ingresso) => (ingresso.id === id ? { ...ingresso, status: "cancelado" } : ingresso)) ?? null);
+  }
+
   return (
     <main className="page-shell max-w-5xl">
       <span className="eyebrow">
@@ -190,6 +194,7 @@ function ListaMeusIngressos({ token }: { token: string }) {
           ingresso={ingressoSelecionado}
           token={token}
           onTransferido={() => removerIngressoTransferido(ingressoSelecionado.id)}
+          onCancelado={() => marcarIngressoCancelado(ingressoSelecionado.id)}
           onFechar={() => setIngressoSelecionado(null)}
         />
       )}

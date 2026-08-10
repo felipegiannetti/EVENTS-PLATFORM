@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CalendarDays, CheckCircle2, MapPin, Ticket, XCircle } from "lucide-react";
-import type { CupomDescontoResponse, EventoResponse } from "@events-platform/shared-types";
-import { formatarDescontoCupom, formatarEnderecoEvento, ROTULO_CATEGORIA_EVENTO } from "@events-platform/shared-types";
+import { CalendarDays, CheckCircle2, Lock, MapPin, Ticket, XCircle } from "lucide-react";
+import type { CupomValidacaoPublicaResponse, EventoResponse } from "@events-platform/shared-types";
+import { formatarEnderecoEvento, ROTULO_CATEGORIA_EVENTO } from "@events-platform/shared-types";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api-client";
-import { buscarEventoPublico, urlBannerEvento, validarCupomPublico } from "@/lib/events-client";
+import { buscarEventoPublico, desbloquearCupomPublico, urlBannerEvento, validarCupomPublico } from "@/lib/events-client";
 
 export default function EventoPublicoPage() {
   return (
@@ -23,8 +25,11 @@ function EventoPublico() {
   const codigoCupom = searchParams.get("cupom");
 
   const [evento, setEvento] = useState<EventoResponse | null | "nao_encontrado">(null);
-  const [cupom, setCupom] = useState<CupomDescontoResponse | null>(null);
+  const [cupom, setCupom] = useState<CupomValidacaoPublicaResponse | null>(null);
   const [cupomInvalido, setCupomInvalido] = useState(false);
+  const [senhaCupom, setSenhaCupom] = useState("");
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
+  const [desbloqueando, setDesbloqueando] = useState(false);
 
   useEffect(() => {
     buscarEventoPublico(id)
@@ -40,6 +45,23 @@ function EventoPublico() {
         if (err instanceof ApiError) setCupomInvalido(true);
       });
   }, [id, codigoCupom]);
+
+  const cupomTravado = cupom?.especial && cupom.tipo === undefined;
+
+  async function onDesbloquear(e: FormEvent) {
+    e.preventDefault();
+    if (!codigoCupom) return;
+    setErroSenha(null);
+    setDesbloqueando(true);
+    try {
+      const resultado = await desbloquearCupomPublico(id, codigoCupom, senhaCupom);
+      setCupom(resultado);
+    } catch (err) {
+      setErroSenha(err instanceof ApiError ? err.message : "Não foi possível desbloquear o cupom.");
+    } finally {
+      setDesbloqueando(false);
+    }
+  }
 
   if (evento === "nao_encontrado") {
     return (
@@ -81,13 +103,46 @@ function EventoPublico() {
         <MapPin size={16} className="text-primary" /> {formatarEnderecoEvento(evento)}
       </p>
 
-      {codigoCupom && (
+      {codigoCupom && cupomTravado && (
+        <Card className="mt-6 p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Lock size={17} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Cupom especial <span className="font-mono">{cupom.codigo}</span>
+              </p>
+              <p className="text-xs text-muted">Este cupom dá acesso a ingressos especiais — digite a senha pra ver o desconto.</p>
+            </div>
+          </div>
+          <form onSubmit={onDesbloquear} className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="min-w-40 flex-1">
+              <Input
+                id="senha-cupom-publico"
+                label="Senha"
+                type="password"
+                required
+                value={senhaCupom}
+                onChange={(e) => setSenhaCupom(e.target.value)}
+                error={erroSenha ?? undefined}
+              />
+            </div>
+            <Button type="submit" loading={desbloqueando}>
+              Desbloquear
+            </Button>
+          </form>
+        </Card>
+      )}
+
+      {codigoCupom && !cupomTravado && (
         <Card className={`mt-6 flex items-center gap-3 p-4 ${cupom ? "border-success/20 bg-success/5" : cupomInvalido ? "border-danger/20 bg-danger/5" : ""}`}>
-          {cupom ? (
+          {cupom && cupom.tipo !== undefined && cupom.valor !== undefined ? (
             <>
               <CheckCircle2 size={18} className="shrink-0 text-success" />
               <p className="text-sm text-foreground">
-                Cupom <strong className="font-mono">{cupom.codigo}</strong> aplicado — {formatarDescontoCupom(cupom)} de desconto.
+                Cupom <strong className="font-mono">{cupom.codigo}</strong> aplicado —{" "}
+                {cupom.tipo === "percentual" ? `${cupom.valor}%` : `R$ ${cupom.valor.toFixed(2)}`} de desconto.
               </p>
             </>
           ) : cupomInvalido ? (

@@ -7,6 +7,7 @@ export interface CriarLoteData {
   nome: string;
   preco: number;
   quantidade: number;
+  especial?: boolean;
 }
 
 export type AtualizarLoteData = Partial<Omit<CriarLoteData, "eventoId">>;

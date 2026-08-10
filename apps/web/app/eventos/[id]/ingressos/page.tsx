@@ -30,6 +30,7 @@ function ModalEmitirIngresso({
   const [compradorNome, setCompradorNome] = useState("");
   const [compradorEmail, setCompradorEmail] = useState("");
   const [cupomDescontoId, setCupomDescontoId] = useState("");
+  const [cancelamentoFlexivel, setCancelamentoFlexivel] = useState(false);
   const [cupons, setCupons] = useState<CupomDescontoResponse[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -49,7 +50,12 @@ function ModalEmitirIngresso({
       await emitirIngresso(
         eventoId,
         lote.id,
-        { compradorNome: compradorNome || undefined, compradorEmail, cupomDescontoId: cupomDescontoId || undefined },
+        {
+          compradorNome: compradorNome || undefined,
+          compradorEmail,
+          cupomDescontoId: cupomDescontoId || undefined,
+          cancelamentoFlexivel,
+        },
         token,
       );
       await onEmitido();
@@ -91,6 +97,22 @@ function ModalEmitirIngresso({
               </select>
             </div>
           )}
+          <label className="flex items-start gap-3 rounded-xl border border-border/15 bg-background/60 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={cancelamentoFlexivel}
+              onChange={(e) => setCancelamentoFlexivel(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-primary"
+            />
+            <span className="text-sm text-foreground">
+              Cancelamento flexível
+              <span className="mt-0.5 block text-xs text-muted">
+                Comprador pode cancelar até perto do evento (em vez do prazo padrão de 7 dias). Normalmente envolveria uma taxa
+                adicional de 10% revertida à plataforma — como não existe checkout de pagamento implementado, nenhuma cobrança
+                real é feita aqui.
+              </span>
+            </span>
+          </label>
           {erro && <p className="text-sm text-danger">{erro}</p>}
           <div className="mt-2 flex gap-3">
             <Button type="button" variant="secondary" onClick={onFechar} className="flex-1" disabled={enviando}>
@@ -270,7 +292,14 @@ function PainelIngressos({ token }: { token: string }) {
               const percentual = lote.quantidade > 0 ? Math.min(100, (lote.quantidadeEmitida / lote.quantidade) * 100) : 0;
               return (
                 <tr key={lote.id} className="border-b border-border/10 last:border-0">
-                  <td className="px-5 py-4 font-medium text-foreground">{lote.nome}</td>
+                  <td className="px-5 py-4 font-medium text-foreground">
+                    {lote.nome}
+                    {lote.especial && (
+                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                        Especial
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="h-2 w-32 overflow-hidden rounded-full bg-muted/15">
@@ -354,6 +383,7 @@ function FormularioLote({
   const [nome, setNome] = useState("");
   const [precoCentavos, setPrecoCentavos] = useState(0);
   const [quantidade, setQuantidade] = useState("100");
+  const [especial, setEspecial] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -362,10 +392,11 @@ function FormularioLote({
     setErro(null);
     setEnviando(true);
     try {
-      await criarLote(eventoId, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade) }, token);
+      await criarLote(eventoId, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade), especial }, token);
       setNome("");
       setPrecoCentavos(0);
       setQuantidade("100");
+      setEspecial(false);
       await onCriado();
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível criar o lote.");
@@ -389,10 +420,20 @@ function FormularioLote({
         value={quantidade}
         onChange={(e) => setQuantidade(e.target.value)}
       />
+      <label className="flex h-12 items-center gap-2 rounded-xl border border-border/15 bg-background/60 px-3">
+        <input type="checkbox" checked={especial} onChange={(e) => setEspecial(e.target.checked)} className="h-4 w-4 accent-primary" />
+        <span className="text-sm text-foreground">Lote especial (privado)</span>
+      </label>
       <Button type="submit" loading={enviando}>
         Criar lote
       </Button>
       {erro && <p className="basis-full text-sm text-danger">{erro}</p>}
+      {especial && (
+        <p className="basis-full text-xs text-muted">
+          Lotes especiais ficam pensados pra só ser acessados através de um cupom especial protegido por senha (crie o cupom em
+          Cupons de desconto).
+        </p>
+      )}
     </form>
   );
 }

@@ -18,6 +18,7 @@ export interface CriarEventoData {
   somenteMaioresDeIdade: boolean;
   categoria: CategoriaEvento;
   transferivel: boolean;
+  prazoTransferenciaHoras?: number | null;
   taxaPagaPor: TaxaPagaPor;
   publicado: boolean;
   descricao?: string;

@@ -39,6 +39,8 @@ export class PrismaCupomDescontoRepository implements CupomDescontoRepository {
         valor: data.valor,
         limiteUsos: data.limiteUsos ?? null,
         ativo: data.ativo,
+        especial: data.especial ?? false,
+        senhaHash: data.senhaHash,
       },
     });
     return this.toModel(cupom);
@@ -67,6 +69,8 @@ export class PrismaCupomDescontoRepository implements CupomDescontoRepository {
       cupom.ativo,
       cupom.limiteUsos,
       cupom.usos,
+      cupom.especial,
+      cupom.senhaHash,
       cupom.criadoEm,
     );
   }

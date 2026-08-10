@@ -9,6 +9,9 @@ export interface CriarCupomDescontoData {
   tipo: TipoDescontoCupom;
   valor: number;
   limiteUsos?: number;
+  especial?: boolean;
+  /** Hash já pronto (argon2) — o Repository nunca vê a senha em texto puro, isso é responsabilidade do Service. */
+  senhaHash?: string;
 }
 
 /** Edição completa — substitui todos os campos editáveis de uma vez (mesmo padrão de AtualizarLoteData). */
@@ -18,6 +21,9 @@ export interface AtualizarCupomDescontoData {
   valor: number;
   limiteUsos?: number;
   ativo: boolean;
+  especial?: boolean;
+  /** Ausente = mantém o hash já salvo (não altera a senha). */
+  senhaHash?: string;
 }
 
 export interface CupomDescontoRepository {

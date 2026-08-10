@@ -65,6 +65,14 @@ export class PrismaIngressoRepository implements IngressoRepository {
     return resultado.count === 1 ? this.buscarPorId(id) : null;
   }
 
+  async cancelarSePertence(id: string, compradorEmailAtual: string): Promise<IngressoModel | null> {
+    const resultado = await this.prisma.ingresso.updateMany({
+      where: { id, compradorEmail: compradorEmailAtual, status: "valido" },
+      data: { status: "cancelado", version: { increment: 1 } },
+    });
+    return resultado.count === 1 ? this.buscarPorId(id) : null;
+  }
+
   async listarPorEvento(eventoId: string): Promise<IngressoModel[]> {
     const ingressos = await this.prisma.ingresso.findMany({
       where: { eventoId },
@@ -115,6 +123,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
       ingresso.status,
       ingresso.qrToken,
       ingresso.transferivel,
+      ingresso.cancelamentoFlexivel,
       ingresso.compradorNome,
       ingresso.compradorEmail,
       ingresso.compradorDocumento,

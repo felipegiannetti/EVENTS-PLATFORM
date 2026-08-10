@@ -19,6 +19,11 @@ export function transferirIngresso(ticketId: string, destinatarioEmail: string, 
   );
 }
 
+/** Cancelamento self-service (o próprio comprador cancela o próprio ingresso) — diferente do cancelamento feito pelo organizador em /events/:id/ingressos/:ticketId/status. */
+export function cancelarIngressoProprio(ticketId: string, token: string) {
+  return apiFetch<{ cancelado: true }>(`/tickets/${ticketId}/cancelar`, { method: "POST" }, token);
+}
+
 export function checkin(eventoId: string, qrToken: string, token: string) {
   return apiFetch<IngressoResponse>(
     `/events/${eventoId}/checkin`,

@@ -19,6 +19,8 @@ const eventoBaseSchema = z.object({
   somenteMaioresDeIdade: z.boolean().default(false),
   categoria: z.enum(CATEGORIA_EVENTO),
   transferivel: z.boolean().default(false),
+  /** Só tem efeito quando transferivel=true. null/ausente = sem limite de prazo (pode transferir até o início do evento). */
+  prazoTransferenciaHoras: z.number().int().positive().nullable().optional(),
   taxaPagaPor: z.enum(TAXA_PAGA_POR).default("comprador"),
   /** O evento é criado por completo de qualquer forma — isso só controla se compradores já enxergam ele em GET /events/public. Privado (false) por padrão; o organizador libera quando quiser, e pode voltar a esconder depois. */
   publicado: z.boolean().default(false),
@@ -54,6 +56,7 @@ export const eventoResponseSchema = z.object({
   somenteMaioresDeIdade: z.boolean(),
   categoria: z.enum(CATEGORIA_EVENTO),
   transferivel: z.boolean(),
+  prazoTransferenciaHoras: z.number().int().nullable(),
   taxaPagaPor: z.enum(TAXA_PAGA_POR),
   publicado: z.boolean(),
   descricao: z.string().nullable(),

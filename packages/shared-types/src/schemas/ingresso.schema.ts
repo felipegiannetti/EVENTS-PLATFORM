@@ -9,11 +9,13 @@ export const emitirIngressoSchema = z.object({
   compradorDocumento: z.string().max(20).optional(),
   /** Opcional — marca que esse ingresso usou um cupom de desconto (incrementa CupomDesconto.usos). Só na emissão, não dá pra mudar depois via atualizarIngressoSchema. */
   cupomDescontoId: z.string().uuid().optional(),
+  /** Cancelamento flexível — comprador pode cancelar a qualquer momento até perto do evento, em vez da janela padrão de 7 dias. Ver docs/architecture/12-pagamentos-e-repasses.md#43 (sem cobrança real do adicional de 10%, não existe checkout). */
+  cancelamentoFlexivel: z.boolean().default(false),
 });
 export type EmitirIngressoInput = z.infer<typeof emitirIngressoSchema>;
 
 /** Editar um ingresso já emitido — só os dados do comprador (nome/email/documento). Cupom, reenvio de email e cancelamento são ações separadas, não passam por aqui. */
-export const atualizarIngressoSchema = emitirIngressoSchema.omit({ linkVendaId: true, cupomDescontoId: true });
+export const atualizarIngressoSchema = emitirIngressoSchema.omit({ linkVendaId: true, cupomDescontoId: true, cancelamentoFlexivel: true });
 export type AtualizarIngressoInput = z.infer<typeof atualizarIngressoSchema>;
 
 export const ingressoResponseSchema = z.object({
@@ -24,6 +26,7 @@ export const ingressoResponseSchema = z.object({
   status: z.enum(STATUS_INGRESSO),
   qrToken: z.string(),
   transferivel: z.boolean(),
+  cancelamentoFlexivel: z.boolean(),
   compradorNome: z.string().nullable(),
   compradorEmail: z.string().nullable(),
   compradorDocumento: z.string().nullable(),
@@ -55,3 +58,21 @@ export const enviarEmailParticipantesSchema = z.object({
   mensagem: z.string().min(1).max(5000),
 });
 export type EnviarEmailParticipantesInput = z.infer<typeof enviarEmailParticipantesSchema>;
+
+/** Política da plataforma: cancelamento self-service em até 7 dias corridos da emissão/compra (direito de arrependimento, análogo ao art. 49 do CDC) — ver docs/architecture/12-pagamentos-e-repasses.md#42. Ingressos com cancelamentoFlexivel=true não têm esse limite (podem cancelar até perto do evento). */
+export const PRAZO_CANCELAMENTO_PADRAO_DIAS = 7;
+
+/** Mesma regra usada no front (pra habilitar/desabilitar o botão) e no back (fonte da verdade, sempre revalidada lá). */
+export function podeCancelarSelfService(ingresso: {
+  status: string;
+  criadoEm: string;
+  cancelamentoFlexivel: boolean;
+  eventoData: string;
+}): boolean {
+  if (ingresso.status !== "valido") return false;
+  const agora = Date.now();
+  if (new Date(ingresso.eventoData).getTime() <= agora) return false;
+  if (ingresso.cancelamentoFlexivel) return true;
+  const prazoMs = PRAZO_CANCELAMENTO_PADRAO_DIAS * 24 * 60 * 60 * 1000;
+  return agora - new Date(ingresso.criadoEm).getTime() <= prazoMs;
+}

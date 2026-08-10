@@ -10,6 +10,9 @@ export class CupomDescontoModel {
     public readonly ativo: boolean,
     public readonly limiteUsos: number | null,
     public readonly usos: number,
+    public readonly especial: boolean,
+    /** Nunca sai do backend — CupomDescontoMapper.toResponse() nunca inclui esse campo. */
+    public readonly senhaHash: string | null,
     public readonly criadoEm: Date,
   ) {}
 }

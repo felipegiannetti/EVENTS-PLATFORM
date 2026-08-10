@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AtualizarIngressoInput, EmitirIngressoInput } from "@events-platform/shared-types";
-import { formatarEnderecoEvento } from "@events-platform/shared-types";
+import { formatarEnderecoEvento, podeCancelarSelfService } from "@events-platform/shared-types";
 import { escaparHtml } from "../infra/mail/escapar-html.util";
 import { INGRESSO_REPOSITORY, type IngressoRepository } from "./repository/ingresso.repository";
 import { LOTE_REPOSITORY, type LoteRepository } from "../events/repository/lote.repository";
@@ -25,6 +25,8 @@ import { gerarPdfIngresso } from "./pdf/ingresso-pdf.util";
 import { UsuarioNaoEncontradoException } from "../events/exceptions/usuario-nao-encontrado.exception";
 import { IngressoNaoTransferivelException } from "./exceptions/ingresso-nao-transferivel.exception";
 import { DestinatarioInvalidoException } from "./exceptions/destinatario-invalido.exception";
+import { PrazoTransferenciaExpiradoException } from "./exceptions/prazo-transferencia-expirado.exception";
+import { PrazoCancelamentoExpiradoException } from "./exceptions/prazo-cancelamento-expirado.exception";
 
 @Injectable()
 export class TicketsService {
@@ -73,6 +75,7 @@ export class TicketsService {
       linkVendaId: input.linkVendaId,
       qrToken,
       transferivel: evento?.transferivel ?? false,
+      cancelamentoFlexivel: input.cancelamentoFlexivel,
       compradorNome: input.compradorNome,
       compradorEmail: input.compradorEmail,
       compradorDocumento: input.compradorDocumento,
@@ -195,6 +198,14 @@ export class TicketsService {
       throw new IngressoNaoTransferivelException();
     }
 
+    const evento = await this.eventoRepository.buscarPorId(ingresso.eventoId);
+    if (evento?.prazoTransferenciaHoras != null) {
+      const prazoMs = evento.prazoTransferenciaHoras * 60 * 60 * 1000;
+      if (Date.now() > evento.data.getTime() - prazoMs) {
+        throw new PrazoTransferenciaExpiradoException();
+      }
+    }
+
     // Rotacionar o QR invalida qualquer captura que o antigo dono tenha guardado.
     const transferido = await this.ingressoRepository.transferirSePertence(id, proprietario.email, {
       compradorNome: destinatario.nome,
@@ -210,6 +221,41 @@ export class TicketsService {
       await this.enviarEmailConfirmacao(transferido);
     } catch (erro) {
       this.logger.warn(`Ingresso ${id} transferido, mas o email ao destinatário falhou: ${(erro as Error).message}`);
+    }
+  }
+
+  /**
+   * Cancelamento self-service — o próprio comprador cancela o ingresso dele, sem depender do organizador.
+   * Janela padrão: 7 dias corridos desde a emissão/compra (direito de arrependimento — ver
+   * docs/architecture/12-pagamentos-e-repasses.md#42). Ingressos com cancelamentoFlexivel=true podem
+   * cancelar a qualquer momento até o evento começar. Não existe reembolso de dinheiro real — não há
+   * checkout/pagamento implementado, então isso só invalida o ingresso (ver PRAZO_CANCELAMENTO_PADRAO_DIAS).
+   */
+  async cancelarSeProprio(id: string, usuarioId: string): Promise<void> {
+    const [ingresso, proprietario] = await Promise.all([this.buscar(id), this.usuarioRepository.buscarPorId(usuarioId)]);
+
+    if (!proprietario || ingresso.compradorEmail !== proprietario.email) {
+      // Mesmo padrão de transferir(): não revela se um UUID arbitrário pertence a outra pessoa.
+      throw new IngressoNaoEncontradoException();
+    }
+
+    const evento = await this.eventoRepository.buscarPorId(ingresso.eventoId);
+    const podeCancelar = podeCancelarSelfService({
+      status: ingresso.status,
+      criadoEm: ingresso.criadoEm.toISOString(),
+      cancelamentoFlexivel: ingresso.cancelamentoFlexivel,
+      eventoData: evento?.data.toISOString() ?? new Date(0).toISOString(),
+    });
+    if (!podeCancelar) {
+      throw new PrazoCancelamentoExpiradoException();
+    }
+
+    const cancelado = await this.ingressoRepository.cancelarSePertence(id, proprietario.email);
+    if (!cancelado) {
+      throw new PrazoCancelamentoExpiradoException();
+    }
+    if (ingresso.cupomDescontoId) {
+      await this.cupomDescontoRepository.decrementarUsos(ingresso.cupomDescontoId);
     }
   }
 

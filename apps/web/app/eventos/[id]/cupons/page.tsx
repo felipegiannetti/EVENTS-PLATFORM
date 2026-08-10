@@ -28,6 +28,8 @@ function PainelCupons({ token }: { token: string }) {
   const [percentual, setPercentual] = useState("10");
   const [valorCentavos, setValorCentavos] = useState(1000);
   const [limiteUsos, setLimiteUsos] = useState("");
+  const [especial, setEspecial] = useState(false);
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [codigoCopiado, setCodigoCopiado] = useState<string | null>(null);
@@ -66,11 +68,17 @@ function PainelCupons({ token }: { token: string }) {
     setEnviando(true);
     try {
       const valor = tipo === "percentual" ? Number(percentual) : valorCentavos / 100;
-      await criarCupom(id, { codigo, tipo, valor, limiteUsos: limiteUsos ? Number(limiteUsos) : undefined }, token);
+      await criarCupom(
+        id,
+        { codigo, tipo, valor, limiteUsos: limiteUsos ? Number(limiteUsos) : undefined, especial, senha: especial ? senha : undefined },
+        token,
+      );
       setCodigo("");
       setPercentual("10");
       setValorCentavos(1000);
       setLimiteUsos("");
+      setEspecial(false);
+      setSenha("");
       await recarregar();
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível criar o cupom.");
@@ -92,6 +100,7 @@ function PainelCupons({ token }: { token: string }) {
           valor: cupomAlternando.valor,
           limiteUsos: cupomAlternando.limiteUsos ?? undefined,
           ativo: !cupomAlternando.ativo,
+          especial: cupomAlternando.especial,
         },
         token,
       );
@@ -235,6 +244,31 @@ function PainelCupons({ token }: { token: string }) {
           <Button type="submit" loading={enviando} className="gap-2">
             <Plus size={16} /> Criar cupom
           </Button>
+
+          <label className="flex h-12 items-center gap-2 rounded-xl border border-border/15 bg-background/60 px-3">
+            <input type="checkbox" checked={especial} onChange={(e) => setEspecial(e.target.checked)} className="h-4 w-4 accent-primary" />
+            <span className="flex items-center text-sm text-foreground">
+              Cupom especial (com senha)
+              <HelpTooltip
+                className="ml-1.5"
+                texto="Pensado pra dar acesso a lotes especiais/privados. O comprador precisa digitar essa senha na página do evento pra ver o desconto aplicado."
+              />
+            </span>
+          </label>
+          {especial && (
+            <div className="min-w-40 flex-1">
+              <Input
+                id="senha-cupom"
+                label="Senha do cupom"
+                type="text"
+                required
+                minLength={4}
+                placeholder="Mínimo 4 caracteres"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+              />
+            </div>
+          )}
         </form>
         {erro && <p className="mt-3 text-sm text-danger">{erro}</p>}
       </Card>
@@ -264,6 +298,11 @@ function PainelCupons({ token }: { token: string }) {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-mono text-sm font-semibold text-foreground">{cupom.codigo}</p>
+                  {cupom.especial && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                      Especial
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => onCopiar(cupom.codigo)}
@@ -410,6 +449,8 @@ function ModalEditarCupom({
   const [valorCentavos, setValorCentavos] = useState(cupom.tipo === "valor_fixo" ? Math.round(cupom.valor * 100) : 0);
   const [limiteUsos, setLimiteUsos] = useState(cupom.limiteUsos !== null ? String(cupom.limiteUsos) : "");
   const [ativo, setAtivo] = useState(cupom.ativo);
+  const [especial, setEspecial] = useState(cupom.especial);
+  const [senha, setSenha] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -422,7 +463,7 @@ function ModalEditarCupom({
       await atualizarCupom(
         eventoId,
         cupom.id,
-        { codigo, tipo, valor, limiteUsos: limiteUsos ? Number(limiteUsos) : undefined, ativo },
+        { codigo, tipo, valor, limiteUsos: limiteUsos ? Number(limiteUsos) : undefined, ativo, especial, senha: senha || undefined },
         token,
       );
       onSalvo();
@@ -518,6 +559,23 @@ function ModalEditarCupom({
           >
             {ativo ? "Ativo" : "Inativo"}
           </button>
+
+          <label className="flex h-12 items-center gap-2 rounded-xl border border-border/15 bg-background/60 px-3">
+            <input type="checkbox" checked={especial} onChange={(e) => setEspecial(e.target.checked)} className="h-4 w-4 accent-primary" />
+            <span className="text-sm text-foreground">Cupom especial (com senha)</span>
+          </label>
+          {especial && (
+            <Input
+              id="editar-senha-cupom"
+              label={cupom.especial ? "Nova senha (vazio = mantém a atual)" : "Senha do cupom"}
+              type="text"
+              required={!cupom.especial}
+              minLength={4}
+              placeholder={cupom.especial ? "Deixe em branco pra não trocar" : "Mínimo 4 caracteres"}
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+            />
+          )}
 
           {erro && <p className="text-sm text-danger">{erro}</p>}
           <div className="mt-2 flex gap-3">

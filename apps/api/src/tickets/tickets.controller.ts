@@ -130,4 +130,10 @@ export class MeusIngressosController {
     await this.ticketsService.transferir(ticketId, usuario.id, dto.destinatarioEmail);
     return { transferido: true };
   }
+
+  @Post(":ticketId/cancelar")
+  async cancelar(@Param("ticketId") ticketId: string, @CurrentUser() usuario: AuthenticatedUser) {
+    await this.ticketsService.cancelarSeProprio(ticketId, usuario.id);
+    return { cancelado: true };
+  }
 }

@@ -4,6 +4,8 @@ export const criarLoteSchema = z.object({
   nome: z.string().min(2).max(120),
   preco: z.number().nonnegative(),
   quantidade: z.number().int().positive(),
+  /** Lote especial/privado — pensado pra só ficar acessível através de um cupom especial protegido por senha. */
+  especial: z.boolean().default(false),
 });
 export type CriarLoteInput = z.infer<typeof criarLoteSchema>;
 
@@ -17,5 +19,6 @@ export const loteResponseSchema = z.object({
   preco: z.number(),
   quantidade: z.number().int(),
   quantidadeEmitida: z.number().int(),
+  especial: z.boolean(),
 });
 export type LoteResponse = z.infer<typeof loteResponseSchema>;

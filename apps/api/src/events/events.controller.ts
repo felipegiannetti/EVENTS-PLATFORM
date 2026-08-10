@@ -33,6 +33,8 @@ import { AtualizarLoteDto, CriarLoteDto } from "./dto/criar-lote.dto";
 import { CriarLinkVendaDto } from "./dto/criar-link-venda.dto";
 import { ConvidarAcessoDto } from "./dto/convidar-acesso.dto";
 import { AtualizarCupomDescontoDto, CriarCupomDescontoDto } from "./dto/criar-cupom-desconto.dto";
+import { DesbloquearCupomDto } from "./dto/desbloquear-cupom.dto";
+import type { CupomValidacaoPublicaResponse } from "@events-platform/shared-types";
 
 const PAPEIS_LEITURA = ["owner", "gestor", "view", "checkin_operator"] as const;
 const PAPEIS_EDICAO = ["owner", "gestor"] as const;
@@ -77,9 +79,24 @@ export class EventsController {
 
   @Public()
   @Get("public/:id/cupom/:codigo")
-  async validarCupomPublico(@Param("id") id: string, @Param("codigo") codigo: string) {
+  async validarCupomPublico(@Param("id") id: string, @Param("codigo") codigo: string): Promise<CupomValidacaoPublicaResponse> {
     const cupom = await this.eventsService.validarCupomPublico(id, codigo);
-    return this.cupomDescontoMapper.toResponse(cupom);
+    // Cupom especial: só confirma que existe e está travado — tipo/valor só saem depois da senha certa (ver desbloquearCupom abaixo).
+    if (cupom.especial) {
+      return { codigo: cupom.codigo, especial: true };
+    }
+    return { codigo: cupom.codigo, especial: false, tipo: cupom.tipo, valor: cupom.valor };
+  }
+
+  @Public()
+  @Post("public/:id/cupom/:codigo/desbloquear")
+  async desbloquearCupom(
+    @Param("id") id: string,
+    @Param("codigo") codigo: string,
+    @Body() dto: DesbloquearCupomDto,
+  ): Promise<CupomValidacaoPublicaResponse> {
+    const cupom = await this.eventsService.desbloquearCupom(id, codigo, dto.senha);
+    return { codigo: cupom.codigo, especial: cupom.especial, tipo: cupom.tipo, valor: cupom.valor };
   }
 
   @UseGuards(EventRoleGuard)

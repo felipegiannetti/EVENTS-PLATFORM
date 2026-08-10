@@ -14,6 +14,7 @@ export class CupomDescontoMapper {
       ativo: model.ativo,
       limiteUsos: model.limiteUsos,
       usos: model.usos,
+      especial: model.especial,
       criadoEm: model.criadoEm.toISOString(),
     };
   }

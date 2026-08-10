@@ -137,6 +137,9 @@ model Evento {
   somenteMaioresDeIdade Boolean @default(false)
   categoria    CategoriaEvento @default(outros)
   transferivel Boolean     @default(false)
+  /// Só tem efeito quando transferivel=true. null = sem limite de prazo (pode transferir até o início do evento).
+  /// Quando setado, bloqueia transferência se agora > (data do evento - prazoTransferenciaHoras).
+  prazoTransferenciaHoras Int?
   taxaPagaPor  TaxaPagaPor @default(comprador)
   /// Banner do evento salvo como bytes direto no Postgres (bytea), não em storage externo/URL — decisão explícita do produto. Ver docs/architecture/04-modelo-de-dados.md.
   imagemBanner     Bytes?
@@ -176,6 +179,10 @@ model CupomDesconto {
   /// null = ilimitado (padrão). Quando setado, emitir um ingresso com esse cupom passa a ser bloqueado
   /// assim que usos >= limiteUsos — ver CupomEsgotadoException.
   limiteUsos Int?
+  /// Cupom especial (protegido por senha) — pensado pra dar acesso a lotes especiais (Lote.especial).
+  /// Nunca retornado em nenhuma resposta da API; só usado para verificar a senha no desbloqueio público.
+  especial   Boolean  @default(false)
+  senhaHash  String?
   /// Incrementado quando um ingresso é emitido já apontando pra esse cupom (ver Ingresso.cupomDescontoId)
   /// e decrementado se esse ingresso for cancelado — ainda não conta vendas via checkout self-service
   /// (que não existe), só emissão manual que o organizador marcou como tendo usado o cupom.
@@ -217,6 +224,8 @@ model Lote {
   nome       String
   preco      Decimal  @db.Decimal(10, 2)
   quantidade Int
+  /// Lote especial/privado — pensado pra só ficar visível/comprável através de um cupom especial com senha.
+  especial   Boolean  @default(false)
   criadoEm   DateTime @default(now())
 
   ingressos Ingresso[]
@@ -253,6 +262,11 @@ model Ingresso {
   status       StatusIngresso @default(valido)
   qrToken      String         @unique
   transferivel Boolean        @default(false)
+  /// Cancelamento flexível — comprador pode cancelar a qualquer momento até perto do início do evento
+  /// (ver TicketsService.cancelarSeProprio), em vez da janela padrão de 7 dias corridos da emissão.
+  /// Marcado pelo organizador na emissão manual — não há cobrança real do adicional de 10% associado
+  /// a essa opção, já que não existe checkout/pagamento implementado (ver docs/architecture/12-pagamentos-e-repasses.md#43).
+  cancelamentoFlexivel Boolean @default(false)
   version      Int            @default(0)
   /// Preenchidos na emissão manual — ainda não existe checkout self-service, então nem todo ingresso tem comprador (ex: cortesias sem contato coletado). compradorEmail é o que liga um ingresso ao 'Meus ingressos' de um Usuario.
   compradorNome      String?

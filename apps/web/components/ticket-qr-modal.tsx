@@ -2,10 +2,11 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, CalendarDays, CheckCircle2, Mail, MoreHorizontal, Send, ShieldCheck, Ticket, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Ban, CalendarDays, CheckCircle2, Mail, MoreHorizontal, Send, ShieldCheck, Ticket, X } from "lucide-react";
 import type { MeuIngressoResponse } from "@events-platform/shared-types";
+import { podeCancelarSelfService, PRAZO_CANCELAMENTO_PADRAO_DIAS } from "@events-platform/shared-types";
 import { ApiError } from "@/lib/api-client";
-import { transferirIngresso } from "@/lib/tickets-client";
+import { cancelarIngressoProprio, transferirIngresso } from "@/lib/tickets-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -14,12 +15,13 @@ interface TicketQrModalProps {
   token: string;
   onFechar: () => void;
   onTransferido: () => void;
+  onCancelado: () => void;
 }
 
-type Tela = "ingresso" | "transferir" | "sucesso";
+type Tela = "ingresso" | "transferir" | "cancelar" | "sucesso" | "cancelado";
 
-/** Carteira em bottom sheet: QR assinado e transferência segura para outra conta cadastrada. */
-export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: TicketQrModalProps) {
+/** Carteira em bottom sheet: QR assinado, transferência segura e cancelamento self-service para outra conta cadastrada. */
+export function TicketQrModal({ ingresso, token, onFechar, onTransferido, onCancelado }: TicketQrModalProps) {
   const [aberto, setAberto] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -50,7 +52,7 @@ export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: Tick
     function aoPressionarTecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") {
         if (menuAberto) setMenuAberto(false);
-        else if (tela === "transferir") setTela("ingresso");
+        else if (tela === "transferir" || tela === "cancelar") setTela("ingresso");
         else fechar();
       }
     }
@@ -79,7 +81,22 @@ export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: Tick
     }
   }
 
+  async function confirmarCancelamento() {
+    setErro(null);
+    setEnviando(true);
+    try {
+      await cancelarIngressoProprio(ingresso.id, token);
+      setTela("cancelado");
+      onCancelado();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Não foi possível cancelar o ingresso.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const podeTransferir = ingresso.transferivel && ingresso.status === "valido";
+  const podeCancelar = podeCancelarSelfService(ingresso);
 
   return (
     <div
@@ -96,7 +113,7 @@ export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: Tick
       >
         <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border/10 bg-background/90 px-5 py-3 backdrop-blur-xl">
           <div className="relative">
-            {tela === "transferir" ? (
+            {tela === "transferir" || tela === "cancelar" ? (
               <button
                 type="button"
                 onClick={() => { setTela("ingresso"); setErro(null); }}
@@ -130,6 +147,23 @@ export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: Tick
                 {!podeTransferir && (
                   <p className="px-3 pb-2 pt-1 text-xs leading-5 text-muted">
                     Este ingresso não permite transferência ou já foi utilizado.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={!podeCancelar}
+                  onClick={() => { setMenuAberto(false); setTela("cancelar"); }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-danger transition hover:bg-danger/8 disabled:cursor-not-allowed disabled:text-muted disabled:opacity-45 disabled:hover:bg-transparent"
+                >
+                  <Ban size={17} /> Cancelar ingresso
+                </button>
+                {!podeCancelar && (
+                  <p className="px-3 pb-2 pt-1 text-xs leading-5 text-muted">
+                    {ingresso.status !== "valido"
+                      ? "Este ingresso já não está mais válido."
+                      : ingresso.cancelamentoFlexivel
+                        ? "Não é mais possível cancelar — o evento já começou."
+                        : `O prazo de ${PRAZO_CANCELAMENTO_PADRAO_DIAS} dias para cancelar essa compra já passou.`}
                   </p>
                 )}
               </div>
@@ -235,6 +269,41 @@ export function TicketQrModal({ ingresso, token, onFechar, onTransferido }: Tick
             <p className="mt-2 text-sm leading-6 text-muted">
               O ingresso foi enviado para <strong className="text-foreground">{email.trim()}</strong> e já saiu da sua carteira.
             </p>
+            <Button type="button" onClick={fechar} className="mt-7 w-full">Concluir</Button>
+          </div>
+        )}
+
+        {tela === "cancelar" && (
+          <div className="px-6 pb-8 pt-7 sm:px-8">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-danger/10 text-danger"><Ban size={21} /></span>
+            <h2 id="titulo-ingresso" className="mt-5 text-2xl font-bold tracking-[-0.035em] text-foreground">Cancelar ingresso</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Tem certeza que quer cancelar este ingresso para <strong className="text-foreground">{ingresso.eventoNome}</strong>?
+            </p>
+            <div className="mt-6 flex items-start gap-3 rounded-2xl bg-warning/10 px-4 py-3 text-xs leading-5 text-warning">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <span>
+                Essa ação não pode ser desfeita e o QR code deixa de valer na entrada. Como a plataforma ainda não processa
+                pagamento online, nenhum reembolso em dinheiro é feito aqui — isso só invalida o ingresso.
+              </span>
+            </div>
+            {erro && <p className="mt-4 text-sm text-danger">{erro}</p>}
+            <div className="mt-6 flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => { setTela("ingresso"); setErro(null); }} className="flex-1" disabled={enviando}>
+                Voltar
+              </Button>
+              <Button type="button" loading={enviando} onClick={confirmarCancelamento} className="flex-1 !bg-danger !bg-none">
+                Cancelar ingresso
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {tela === "cancelado" && (
+          <div className="px-7 pb-10 pt-9 text-center sm:px-10">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-danger/10 text-danger"><Ban size={31} /></span>
+            <h2 id="titulo-ingresso" className="mt-5 text-2xl font-bold tracking-[-0.035em] text-foreground">Ingresso cancelado</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">Este ingresso não é mais válido para entrada.</p>
             <Button type="button" onClick={fechar} className="mt-7 w-full">Concluir</Button>
           </div>
         )}

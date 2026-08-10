@@ -14,6 +14,7 @@ export class IngressoMapper {
       status: model.status,
       qrToken: model.qrToken,
       transferivel: model.transferivel,
+      cancelamentoFlexivel: model.cancelamentoFlexivel,
       compradorNome: model.compradorNome,
       compradorEmail: model.compradorEmail,
       compradorDocumento: model.compradorDocumento,

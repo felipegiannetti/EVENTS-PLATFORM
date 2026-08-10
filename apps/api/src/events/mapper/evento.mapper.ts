@@ -21,6 +21,7 @@ export class EventoMapper {
       somenteMaioresDeIdade: model.somenteMaioresDeIdade,
       categoria: model.categoria,
       transferivel: model.transferivel,
+      prazoTransferenciaHoras: model.prazoTransferenciaHoras,
       taxaPagaPor: model.taxaPagaPor,
       publicado: model.publicado,
       descricao: model.descricao,

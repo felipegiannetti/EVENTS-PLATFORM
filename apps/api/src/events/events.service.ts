@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import * as argon2 from "argon2";
 import {
   TAMANHO_MAXIMO_BANNER_BYTES,
   TIPOS_MIME_BANNER_ACEITOS,
@@ -37,6 +38,7 @@ import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontra
 import { BannerInvalidoException } from "./exceptions/banner-invalido.exception";
 import { CupomNaoEncontradoException } from "./exceptions/cupom-nao-encontrado.exception";
 import { CupomComUsosException } from "./exceptions/cupom-com-usos.exception";
+import { SenhaCupomInvalidaException } from "./exceptions/senha-cupom-invalida.exception";
 import { QuantidadeLoteInvalidaException } from "./exceptions/quantidade-lote-invalida.exception";
 
 @Injectable()
@@ -68,6 +70,7 @@ export class EventsService {
       somenteMaioresDeIdade: input.somenteMaioresDeIdade,
       categoria: input.categoria,
       transferivel: input.transferivel,
+      prazoTransferenciaHoras: input.prazoTransferenciaHoras,
       taxaPagaPor: input.taxaPagaPor,
       publicado: input.publicado,
       descricao: input.descricao,
@@ -211,7 +214,9 @@ export class EventsService {
 
   async criarCupom(eventoId: string, input: CriarCupomDescontoInput): Promise<CupomDescontoModel> {
     await this.buscarEvento(eventoId);
-    return this.cupomDescontoRepository.criar({ eventoId, ...input });
+    const { senha, ...dados } = input;
+    const senhaHash = senha ? await argon2.hash(senha, { type: argon2.argon2id }) : undefined;
+    return this.cupomDescontoRepository.criar({ eventoId, ...dados, senhaHash });
   }
 
   async listarCupons(eventoId: string): Promise<CupomDescontoModel[]> {
@@ -224,7 +229,24 @@ export class EventsService {
     if (!cupom || cupom.eventoId !== eventoId) {
       throw new CupomNaoEncontradoException();
     }
-    return this.cupomDescontoRepository.atualizar(cupomId, input);
+    const { senha, ...dados } = input;
+    // Senha ausente na edição = mantém o hash já salvo — só troca se uma nova senha for enviada.
+    const senhaHash = senha ? await argon2.hash(senha, { type: argon2.argon2id }) : undefined;
+    return this.cupomDescontoRepository.atualizar(cupomId, { ...dados, senhaHash });
+  }
+
+  /** Desbloqueio público de um cupom especial — comprador digita a senha na página do evento. */
+  async desbloquearCupom(eventoId: string, codigo: string, senha: string): Promise<CupomDescontoModel> {
+    const cupom = await this.validarCupomPublico(eventoId, codigo);
+    if (!cupom.especial || !cupom.senhaHash) {
+      // Cupom normal não tem senha pra "desbloquear" — trata como já desbloqueado.
+      return cupom;
+    }
+    const senhaValida = await argon2.verify(cupom.senhaHash, senha);
+    if (!senhaValida) {
+      throw new SenhaCupomInvalidaException();
+    }
+    return cupom;
   }
 
   async removerCupom(eventoId: string, cupomId: string): Promise<void> {

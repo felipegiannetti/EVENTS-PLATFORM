@@ -20,6 +20,7 @@ import { CupomEsgotadoException } from "./exceptions/cupom-esgotado.exception";
 import { LoteNaoEncontradoException } from "../events/exceptions/lote-nao-encontrado.exception";
 import { CupomNaoEncontradoException } from "../events/exceptions/cupom-nao-encontrado.exception";
 import { gerarQrToken, verificarQrToken } from "./qr-token.util";
+import { gerarPdfIngresso } from "./pdf/ingresso-pdf.util";
 
 @Injectable()
 export class TicketsService {
@@ -135,10 +136,31 @@ export class TicketsService {
       </div>
     `;
 
+    let anexos: { nomeArquivo: string; conteudo: Buffer; tipoConteudo: string }[] | undefined;
+    try {
+      const pdf = await gerarPdfIngresso({
+        eventoNome: evento.nome,
+        eventoDataFormatada: dataFormatada,
+        enderecoEvento: formatarEnderecoEvento(evento),
+        codigoCompra: ingresso.id,
+        compradorNome: ingresso.compradorNome ?? "",
+        compradorEmail: ingresso.compradorEmail,
+        dataCompraFormatada: ingresso.criadoEm.toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" }),
+        tipoIngresso: lote?.nome ?? null,
+        qrToken: ingresso.qrToken,
+      });
+      anexos = [{ nomeArquivo: `ingresso-${ingresso.id.slice(0, 8)}.pdf`, conteudo: pdf, tipoConteudo: "application/pdf" }];
+    } catch (erro) {
+      // Melhor esforço — o email em HTML já carrega as informações do ingresso; se a geração do
+      // PDF falhar (ex: Chromium indisponível no ambiente), o email ainda vale a pena ser enviado.
+      this.logger.warn(`Não foi possível gerar o PDF do ingresso ${ingresso.id}: ${(erro as Error).message}`);
+    }
+
     await this.mailService.enviar({
       para: [ingresso.compradorEmail],
       assunto: `[RARO Tickets] Seu ingresso — ${evento.nome}`,
       html,
+      anexos,
     });
   }
 

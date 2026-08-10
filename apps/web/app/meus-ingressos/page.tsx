@@ -6,6 +6,7 @@ import type { MeuIngressoResponse } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Card } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
+import { TicketQrModal } from "@/components/ticket-qr-modal";
 import { ApiError } from "@/lib/api-client";
 import { COR_STATUS_INGRESSO, ROTULO_STATUS_INGRESSO } from "@/lib/status-ingresso";
 import { listarMeusIngressos } from "@/lib/tickets-client";
@@ -20,6 +21,7 @@ function ListaMeusIngressos({ token }: { token: string }) {
   const [ingressos, setIngressos] = useState<MeuIngressoResponse[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("proximos");
+  const [ingressoSelecionado, setIngressoSelecionado] = useState<MeuIngressoResponse | null>(null);
 
   useEffect(() => {
     listarMeusIngressos(token)
@@ -69,7 +71,11 @@ function ListaMeusIngressos({ token }: { token: string }) {
 
           <div className="mt-5 flex flex-col gap-3">
             {exibidos.map((ingresso) => (
-              <Card key={ingresso.id} className="flex items-center justify-between gap-3 p-5">
+              <Card
+                key={ingresso.id}
+                onClick={() => setIngressoSelecionado(ingresso)}
+                className="flex cursor-pointer items-center justify-between gap-3 p-5 transition-colors hover:border-primary/30"
+              >
                 <div>
                   <p className="font-medium text-foreground">{ingresso.eventoNome}</p>
                   <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
@@ -86,6 +92,10 @@ function ListaMeusIngressos({ token }: { token: string }) {
             )}
           </div>
         </>
+      )}
+
+      {ingressoSelecionado && (
+        <TicketQrModal ingresso={ingressoSelecionado} onFechar={() => setIngressoSelecionado(null)} />
       )}
     </main>
   );

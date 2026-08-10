@@ -3,10 +3,17 @@ import { ConfigService } from "@nestjs/config";
 import { createTransport, type Transporter } from "nodemailer";
 import { SmtpNaoConfiguradoException } from "./exceptions/smtp-nao-configurado.exception";
 
+interface AnexoEmail {
+  nomeArquivo: string;
+  conteudo: Buffer;
+  tipoConteudo: string;
+}
+
 interface EnviarEmailInput {
   para: string[];
   assunto: string;
   html: string;
+  anexos?: AnexoEmail[];
 }
 
 /**
@@ -27,6 +34,11 @@ export class MailService {
       bcc: input.para,
       subject: input.assunto,
       html: input.html,
+      attachments: input.anexos?.map((anexo) => ({
+        filename: anexo.nomeArquivo,
+        content: anexo.conteudo,
+        contentType: anexo.tipoConteudo,
+      })),
     });
   }
 

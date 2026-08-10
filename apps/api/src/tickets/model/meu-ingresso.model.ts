@@ -6,6 +6,7 @@ export class MeuIngressoModel extends IngressoModel {
     ingresso: IngressoModel,
     public readonly eventoNome: string,
     public readonly eventoData: Date,
+    public readonly loteNome: string,
   ) {
     super(
       ingresso.id,

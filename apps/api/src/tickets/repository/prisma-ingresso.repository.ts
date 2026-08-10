@@ -4,7 +4,7 @@ import type { StatusIngresso } from "@events-platform/shared-types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { IngressoModel } from "../model/ingresso.model";
 import { MeuIngressoModel } from "../model/meu-ingresso.model";
-import type { AtualizarCompradorData, CriarIngressoData, IngressoRepository } from "./ingresso.repository";
+import type { AtualizarCompradorData, CriarIngressoData, IngressoRepository, TransferirIngressoData } from "./ingresso.repository";
 
 const INCLUI_CUPOM = { cupomDesconto: { select: { codigo: true } } } as const;
 
@@ -47,6 +47,24 @@ export class PrismaIngressoRepository implements IngressoRepository {
     return this.toModel(ingresso);
   }
 
+  async transferirSePertence(
+    id: string,
+    compradorEmailAtual: string,
+    data: TransferirIngressoData,
+  ): Promise<IngressoModel | null> {
+    const resultado = await this.prisma.ingresso.updateMany({
+      where: { id, compradorEmail: compradorEmailAtual, status: "valido", transferivel: true },
+      data: {
+        compradorNome: data.compradorNome,
+        compradorEmail: data.compradorEmail,
+        compradorDocumento: data.compradorDocumento,
+        qrToken: data.qrToken,
+        version: { increment: 1 },
+      },
+    });
+    return resultado.count === 1 ? this.buscarPorId(id) : null;
+  }
+
   async listarPorEvento(eventoId: string): Promise<IngressoModel[]> {
     const ingressos = await this.prisma.ingresso.findMany({
       where: { eventoId },
@@ -77,9 +95,15 @@ export class PrismaIngressoRepository implements IngressoRepository {
     const ingressos = await this.prisma.ingresso.findMany({
       where: { compradorEmail: email },
       orderBy: { criadoEm: "desc" },
-      include: { ...INCLUI_CUPOM, evento: { select: { nome: true, data: true } } },
+      include: {
+        ...INCLUI_CUPOM,
+        evento: { select: { nome: true, data: true } },
+        lote: { select: { nome: true } },
+      },
     });
-    return ingressos.map((ingresso) => new MeuIngressoModel(this.toModel(ingresso), ingresso.evento.nome, ingresso.evento.data));
+    return ingressos.map(
+      (ingresso) => new MeuIngressoModel(this.toModel(ingresso), ingresso.evento.nome, ingresso.evento.data, ingresso.lote.nome),
+    );
   }
 
   private toModel(ingresso: IngressoComCupom): IngressoModel {

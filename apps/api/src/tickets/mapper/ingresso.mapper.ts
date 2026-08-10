@@ -27,6 +27,7 @@ export class IngressoMapper {
       ...this.toResponse(model),
       eventoNome: model.eventoNome,
       eventoData: model.eventoData.toISOString(),
+      loteNome: model.loteNome,
     };
   }
 }

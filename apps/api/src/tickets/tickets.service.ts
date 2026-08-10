@@ -11,6 +11,7 @@ import { CUPOM_DESCONTO_REPOSITORY, type CupomDescontoRepository } from "../even
 import { MailService } from "../infra/mail/mail.service";
 import { IngressoModel } from "./model/ingresso.model";
 import type { MeuIngressoModel } from "./model/meu-ingresso.model";
+import { USUARIO_REPOSITORY, type UsuarioRepository } from "../auth/repository/usuario.repository";
 import { LoteEsgotadoException } from "./exceptions/lote-esgotado.exception";
 import { IngressoNaoEncontradoException } from "./exceptions/ingresso-nao-encontrado.exception";
 import { QrInvalidoException } from "./exceptions/qr-invalido.exception";
@@ -21,6 +22,9 @@ import { LoteNaoEncontradoException } from "../events/exceptions/lote-nao-encont
 import { CupomNaoEncontradoException } from "../events/exceptions/cupom-nao-encontrado.exception";
 import { gerarQrToken, verificarQrToken } from "./qr-token.util";
 import { gerarPdfIngresso } from "./pdf/ingresso-pdf.util";
+import { UsuarioNaoEncontradoException } from "../events/exceptions/usuario-nao-encontrado.exception";
+import { IngressoNaoTransferivelException } from "./exceptions/ingresso-nao-transferivel.exception";
+import { DestinatarioInvalidoException } from "./exceptions/destinatario-invalido.exception";
 
 @Injectable()
 export class TicketsService {
@@ -31,6 +35,7 @@ export class TicketsService {
     @Inject(LOTE_REPOSITORY) private readonly loteRepository: LoteRepository,
     @Inject(EVENTO_REPOSITORY) private readonly eventoRepository: EventoRepository,
     @Inject(CUPOM_DESCONTO_REPOSITORY) private readonly cupomDescontoRepository: CupomDescontoRepository,
+    @Inject(USUARIO_REPOSITORY) private readonly usuarioRepository: UsuarioRepository,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
   ) {}
@@ -57,6 +62,7 @@ export class TicketsService {
       }
     }
 
+    const evento = await this.eventoRepository.buscarPorId(eventoId);
     const id = randomUUID();
     const qrToken = gerarQrToken(id, this.config.getOrThrow<string>("QR_TOKEN_SECRET"));
 
@@ -66,7 +72,7 @@ export class TicketsService {
       loteId,
       linkVendaId: input.linkVendaId,
       qrToken,
-      transferivel: false,
+      transferivel: evento?.transferivel ?? false,
       compradorNome: input.compradorNome,
       compradorEmail: input.compradorEmail,
       compradorDocumento: input.compradorDocumento,
@@ -166,6 +172,45 @@ export class TicketsService {
 
   async listarPorCompradorEmail(email: string): Promise<MeuIngressoModel[]> {
     return this.ingressoRepository.listarPorCompradorEmail(email);
+  }
+
+  async transferir(id: string, usuarioId: string, destinatarioEmail: string): Promise<void> {
+    const [ingresso, proprietario, destinatario] = await Promise.all([
+      this.buscar(id),
+      this.usuarioRepository.buscarPorId(usuarioId),
+      this.usuarioRepository.buscarPorEmail(destinatarioEmail),
+    ]);
+
+    if (!proprietario || ingresso.compradorEmail !== proprietario.email) {
+      // Não revela se um UUID arbitrário pertence a outra pessoa.
+      throw new IngressoNaoEncontradoException();
+    }
+    if (!destinatario) {
+      throw new UsuarioNaoEncontradoException();
+    }
+    if (destinatario.id === proprietario.id) {
+      throw new DestinatarioInvalidoException();
+    }
+    if (!ingresso.transferivel || ingresso.status !== "valido") {
+      throw new IngressoNaoTransferivelException();
+    }
+
+    // Rotacionar o QR invalida qualquer captura que o antigo dono tenha guardado.
+    const transferido = await this.ingressoRepository.transferirSePertence(id, proprietario.email, {
+      compradorNome: destinatario.nome,
+      compradorEmail: destinatario.email,
+      compradorDocumento: destinatario.documento,
+      qrToken: gerarQrToken(id, this.config.getOrThrow<string>("QR_TOKEN_SECRET")),
+    });
+    if (!transferido) {
+      throw new IngressoNaoTransferivelException();
+    }
+
+    try {
+      await this.enviarEmailConfirmacao(transferido);
+    } catch (erro) {
+      this.logger.warn(`Ingresso ${id} transferido, mas o email ao destinatário falhou: ${(erro as Error).message}`);
+    }
   }
 
   /** Check-in via scanner — QR assinado (HMAC), validado contra o secret do servidor, nunca confiando no payload decodificado sozinho. */

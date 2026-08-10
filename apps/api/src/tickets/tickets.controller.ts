@@ -11,6 +11,7 @@ import { EmitirIngressoDto } from "./dto/emitir-ingresso.dto";
 import { AtualizarIngressoDto } from "./dto/atualizar-ingresso.dto";
 import { CheckinDto } from "./dto/checkin.dto";
 import { EnviarEmailParticipantesDto } from "./dto/enviar-email-participantes.dto";
+import { TransferirIngressoDto } from "./dto/transferir-ingresso.dto";
 
 const PAPEIS_LEITURA = ["owner", "gestor", "view", "checkin_operator"] as const;
 const PAPEIS_EDICAO = ["owner", "gestor"] as const;
@@ -118,5 +119,15 @@ export class MeusIngressosController {
   async meusIngressos(@CurrentUser() usuario: AuthenticatedUser) {
     const ingressos = await this.ticketsService.listarPorCompradorEmail(usuario.email);
     return ingressos.map((ingresso) => this.ingressoMapper.toMeuIngressoResponse(ingresso));
+  }
+
+  @Post(":ticketId/transferir")
+  async transferir(
+    @Param("ticketId") ticketId: string,
+    @Body() dto: TransferirIngressoDto,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    await this.ticketsService.transferir(ticketId, usuario.id, dto.destinatarioEmail);
+    return { transferido: true };
   }
 }

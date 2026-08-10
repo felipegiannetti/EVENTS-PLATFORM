@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { EventsModule } from "../events/events.module";
+import { AuthModule } from "../auth/auth.module";
 import { MailModule } from "../infra/mail/mail.module";
 import { MeusIngressosController, TicketsController } from "./tickets.controller";
 import { TicketsService } from "./tickets.service";
@@ -9,7 +10,7 @@ import { INGRESSO_REPOSITORY } from "./repository/ingresso.repository";
 import { PrismaIngressoRepository } from "./repository/prisma-ingresso.repository";
 
 @Module({
-  imports: [EventsModule, MailModule],
+  imports: [EventsModule, AuthModule, MailModule],
   controllers: [TicketsController, MeusIngressosController],
   providers: [
     TicketsService,

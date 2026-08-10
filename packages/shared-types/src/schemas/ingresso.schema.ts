@@ -36,8 +36,14 @@ export type IngressoResponse = z.infer<typeof ingressoResponseSchema>;
 export const meuIngressoResponseSchema = ingressoResponseSchema.extend({
   eventoNome: z.string(),
   eventoData: z.string().datetime(),
+  loteNome: z.string(),
 });
 export type MeuIngressoResponse = z.infer<typeof meuIngressoResponseSchema>;
+
+export const transferirIngressoSchema = z.object({
+  destinatarioEmail: z.string().trim().email(),
+});
+export type TransferirIngressoInput = z.infer<typeof transferirIngressoSchema>;
 
 export const checkinSchema = z.object({
   qrToken: z.string().min(1),

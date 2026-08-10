@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AuthProvider } from "@/lib/auth-context";
 import { NavigationLoadingProvider } from "@/lib/navigation-loading";
 import { Header } from "@/components/header";
@@ -16,9 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <NavigationLoadingProvider>
-            <Header />
+            <Suspense fallback={null}>
+              <Header />
+            </Suspense>
             {children}
-            <Footer />
+            <Suspense fallback={null}>
+              <Footer />
+            </Suspense>
           </NavigationLoadingProvider>
         </AuthProvider>
       </body>

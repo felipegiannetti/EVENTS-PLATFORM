@@ -23,11 +23,19 @@ export interface AtualizarCompradorData {
   compradorDocumento?: string;
 }
 
+export interface TransferirIngressoData {
+  compradorNome: string;
+  compradorEmail: string;
+  compradorDocumento: string;
+  qrToken: string;
+}
+
 export interface IngressoRepository {
   criar(data: CriarIngressoData): Promise<IngressoModel>;
   buscarPorId(id: string): Promise<IngressoModel | null>;
   atualizarStatus(id: string, status: StatusIngresso): Promise<IngressoModel>;
   atualizarComprador(id: string, data: AtualizarCompradorData): Promise<IngressoModel>;
+  transferirSePertence(id: string, compradorEmailAtual: string, data: TransferirIngressoData): Promise<IngressoModel | null>;
   listarPorEvento(eventoId: string): Promise<IngressoModel[]>;
   /** Lock otimista via WHERE status='valido' — se outra requisição já fez o check-in nesse meio-tempo (corrida na catraca), retorna false em vez de sobrescrever. */
   marcarComoUsadoSeValido(id: string): Promise<boolean>;

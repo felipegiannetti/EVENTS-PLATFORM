@@ -11,6 +11,14 @@ export function listarMeusIngressos(token: string) {
   return apiFetch<MeuIngressoResponse[]>("/tickets/meus", {}, token);
 }
 
+export function transferirIngresso(ticketId: string, destinatarioEmail: string, token: string) {
+  return apiFetch<{ transferido: true }>(
+    `/tickets/${ticketId}/transferir`,
+    { method: "POST", body: JSON.stringify({ destinatarioEmail }) },
+    token,
+  );
+}
+
 export function checkin(eventoId: string, qrToken: string, token: string) {
   return apiFetch<IngressoResponse>(
     `/events/${eventoId}/checkin`,

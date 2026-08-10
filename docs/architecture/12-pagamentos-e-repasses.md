@@ -431,6 +431,9 @@ Dados financeiros e bancários exigem acesso mínimo, criptografia adequada (já
 | Cancelamento de evento (reembolso em massa) | Pendente definição de negócio |
 | Cooldown de troca de conta de repasse | Pendente definição de segurança/negócio |
 | Limiar de aprovação dupla (dual control) | Pendente definição de negócio/segurança |
+| Prazo de transferência de ingresso (`prazoTransferenciaHoras`, por evento) | Regra de negócio registrada (seção 41) — sem UI de configuração nem execução da transferência em si |
+| Página de Políticas (cancelamento/reembolso) | Regra de negócio registrada (seção 42) — página ainda não criada, ver [11-roadmap.md](11-roadmap.md) |
+| Ingresso com cancelamento flexível (produto pago, 10%) | Regra de negócio registrada (seção 43) — depende de checkout self-service, que não existe |
 
 ## 40. Resumo executivo
 
@@ -449,3 +452,32 @@ Dados financeiros e bancários exigem acesso mínimo, criptografia adequada (já
 13. A futura integração precisa de idempotência, conciliação, webhooks seguros e auditoria completa desde o primeiro dia.
 14. **Nenhum gateway foi integrado nesta tarefa.** Asaas é uma possibilidade futura avaliada em [08-pagamento.md](08-pagamento.md) e [09-modelo-financeiro.md](09-modelo-financeiro.md), mas nenhuma chamada real, API key ou webhook foi criada.
 15. A arquitetura (interface `PaymentProvider`, seção 14) deve permitir trocar de provedor no futuro sem reescrever o domínio financeiro inteiro.
+16. Três novas regras de negócio foram registradas nesta revisão (seções 41–43), nenhuma implementada: prazo de transferência de ingresso configurável por evento, cancelamento de compra em até 7 dias (direito de arrependimento, exige página de Políticas), e um produto pago de "ingresso com cancelamento flexível" (10% adicional revertido inteiramente à plataforma, nunca ao organizador).
+
+## 41. Transferência de ingresso — prazo configurável pelo organizador
+
+Regra de produto registrada (não implementada): o organizador poderá configurar, **por evento**, até quanto tempo antes do início do evento um ingresso ainda pode ser transferido para outra pessoa (ex: `prazoTransferenciaHoras`, análogo em desenho ao `payoutDelayDays` da seção 5 — configurável, nunca hardcoded).
+
+- Isso estende `Evento.transferivel` (hoje um booleano simples — ver [04-modelo-de-dados.md](04-modelo-de-dados.md)), que só liga/desliga a possibilidade de transferir, sem noção de prazo. Precisa virar algo como `transferivel: bool` + `prazoTransferenciaHoras: int?` (`null` = sem prazo, só o booleano decide).
+- A transferência em si (mudar `Ingresso.compradorEmail`/`compradorNome`/`compradorDocumento` para outra pessoa, preservando `qrToken` e histórico) **não tem endpoint, tela nem fluxo hoje** — nem a versão simples (sem prazo), nem a versão com prazo descrita aqui. É puramente uma regra de produto capturada para não se perder, não uma feature em progresso.
+- Pré-requisito de produto antes de implementar: decidir se o destinatário da transferência precisa **já ter conta na plataforma** (mais simples de validar, mais fricção pro comprador) ou se pode ser um email qualquer (a conta é criada/vinculada depois, quando a pessoa acessar).
+- Validação do prazo é sempre no back-end, no momento da tentativa de transferência (`agora < eventoData - prazoTransferenciaHoras`) — nunca confiar em um botão desabilitado no front como única proteção.
+
+## 42. Cancelamento de compra — direito de arrependimento (7 dias) e página de Políticas
+
+Regra de negócio registrada (não implementada): por política da plataforma, o comprador só pode solicitar o cancelamento/reembolso de uma compra de ingresso em **até 7 dias corridos após a compra** — janela que espelha o direito de arrependimento do art. 49 do CDC para compras feitas fora do estabelecimento físico (o que se aplica a compras online no Brasil). Depois desse prazo, o cancelamento deixa de ser um direito automático do comprador (pode ainda existir a critério do organizador/plataforma, mas não é mais garantido).
+
+- **Isso é uma política de comprador em uma compra normal (self-service, com pagamento)** — diferente do cancelamento que o organizador já faz hoje pela tela de Participantes (`PATCH /events/:id/ingressos/:ticketId/status`), que é uma ação do organizador sobre qualquer ingresso emitido manualmente, sem essa janela de 7 dias (não existe "compra" de verdade nesse fluxo, é emissão direta).
+- **Falta criar a página de Políticas** (conteúdo legal/institucional — termos de cancelamento, reembolso, e o que mais for necessário) — registrada aqui como pendência explícita, ver [11-roadmap.md](11-roadmap.md). Ainda não decidido: rota (`/politicas`? `/termos`?), se é uma página estática ou vem de CMS/banco, e se precisa de aceite explícito no cadastro/checkout.
+- Essa janela de 7 dias só passa a ter efeito prático quando existir checkout self-service de verdade (ver seção 4) — hoje não há "compra" para cancelar dentro de um prazo, só emissão manual pelo organizador.
+- Quando o checkout existir, a janela dos 7 dias precisa ser validada no back-end contra a data real do pagamento (`Transacao.criadoEm` ou equivalente), nunca confiada só à UI, e precisa decidir sua interação com a máquina de estados de pagamento (seção 15) — provavelmente `CONFIRMED → REFUNDED` dentro da janela, negado fora dela salvo exceção do organizador/admin.
+
+## 43. Ingresso com cancelamento flexível — produto pago (10%, revertido só à plataforma)
+
+Regra de produto registrada (não implementada): no momento da compra, o comprador poderá optar por um ingresso com **cancelamento flexível** — cancelável até um prazo bem mais curto que o normal (ex: até 1 minuto antes do horário de início do evento, valor ilustrativo a confirmar como decisão de produto) — pagando, além da taxa de serviço normal, um adicional de **10% sobre o valor total (ingresso + taxa)**.
+
+- **Esse adicional de 10% é receita da plataforma, ponto final — nunca é dividido com o organizador, nunca passa pelo `AcordoComercial`** (seção 17 de [09-modelo-financeiro.md](09-modelo-financeiro.md) só divide os 12% de taxa de serviço normal; este é um valor conceitualmente separado, uma espécie de prêmio de flexibilidade que o comprador paga à plataforma por um direito de cancelamento maior do que o padrão). Isso precisa de um campo próprio no domínio financeiro (ex: `valorFlexibilidade`/`flexibleCancellationFee`, distinto de `taxaPlataforma` — ver seção 3) para não se misturar com a taxa de serviço nos relatórios e no ledger (seção 18).
+- Efeito em GMV vs. receita da plataforma (seção 2): o adicional de 10% entra no `valorBruto` pago pelo comprador (GMV), mas 100% dele vira `Platform Revenue` — nunca `Organizer Payable`. É um dos poucos casos em que a plataforma fica com mais que a taxa de serviço padrão sobre uma transação, então relatórios (painel financeiro do organizador e Central Financeira do Admin — seções 22 e 24) precisam mostrar essa parcela separadamente, para o organizador nunca estranhar "por que a taxa retida foi maior que 12% desta venda".
+- Interage com a seção 42 (cancelamento em 7 dias): esta é uma opção **paga** que estende o direito de cancelamento além do padrão (até perto do evento), não um substituto da janela gratuita de 7 dias — as duas regras convivem: dentro dos 7 dias, cancelamento é sempre possível (ingresso normal ou flexível); depois dos 7 dias, só quem pagou o adicional de flexibilidade continua podendo cancelar (até o prazo curto configurado).
+- Fica pendente como decisão de produto: se o reembolso do valor do ingresso é integral ao cancelar dentro da janela flexível, se o adicional de 10% é ele mesmo reembolsável (razoável que não seja — é o preço da opcionalidade, não parte do ingresso), e como isso se comporta se o evento for cancelado pelo organizador (cenário já listado como pendente na tabela da seção 39).
+- Depende inteiramente de checkout self-service existir (seção 4) — sem pagamento de verdade, não há "adicional de 10%" para cobrar.

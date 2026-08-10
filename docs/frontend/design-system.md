@@ -79,6 +79,9 @@ O campo de documento aplica **máscara progressiva** enquanto digita (`apps/web/
 | `ProtectedPage` | Proteção de rotas e carregamento |
 | `LocationFilterModal` | Modal de localização estilo Sympla (busca + geolocalização + lista) — `apps/web/components/location-filter-modal.tsx`, usado em `/eventos/todos` |
 | `EventWorkspaceSidebar` | Sidebar fixa e escura (`bg-[#161532]`) do painel do evento — `apps/web/components/event-workspace-sidebar.tsx`. Agrupa a navegação em seções colapsáveis (ícone `lucide-react` + rótulo) com item ativo destacado; vira menu deslizante em telas pequenas (`< lg`). Renderizada por `apps/web/app/eventos/[id]/layout.tsx`, só quando `useIsEventWorkspace()` (`apps/web/lib/event-workspace.ts`) for `true` |
+| `HelpTooltip` | Ícone `HelpCircle` pequeno + tooltip só-CSS (`group`/`group-hover:opacity-100`) — `apps/web/components/ui/help-tooltip.tsx`. Substitui parágrafos explicativos sempre visíveis (ex: como a taxa de serviço afeta a venda líquida) por uma explicação que só aparece ao passar o mouse, mantendo a tela limpa |
+| `Pagination` | Paginação client-side padrão (botões anterior/próxima, escondida quando cabe tudo numa página) — `apps/web/components/ui/pagination.tsx`, exporta também a constante `ITENS_POR_PAGINA = 20` usada por Cupons, Participantes e a lista de validados do Check-in |
+| `TicketQrModal` | Bottom sheet com animação de baixo pra cima mostrando o QR code de um ingresso — `apps/web/components/ticket-qr-modal.tsx`, usado em `/meus-ingressos` |
 
 **Upload de banner** não é um componente compartilhado — existe um bloco `BannerUploader` em `apps/web/app/eventos/[id]/page.tsx` (painel do evento) e um segundo, semelhante mas próprio, em `apps/web/app/eventos/[id]/detalhes/page.tsx` (etapa 4 do assistente/tela de Configurações) — não foi extraído em componente único porque cada tela tem um layout de card diferente ao redor.
 

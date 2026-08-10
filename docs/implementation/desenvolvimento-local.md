@@ -28,7 +28,7 @@ Na raiz do monorepo:
 pnpm install
 ```
 
-O workspace autoriza os scripts nativos necessários para NestJS, Prisma, Argon2, Sharp e suas dependências em `pnpm-workspace.yaml`.
+O workspace autoriza os scripts nativos necessários para NestJS, Prisma, Argon2, Sharp, Puppeteer e suas dependências em `pnpm-workspace.yaml`. **Puppeteer baixa o próprio Chromium no post-install** (usado por `apps/api` pra gerar o PDF do ingresso) — na primeira instalação isso adiciona alguns minutos e ~200MB de download; instalações seguintes reusam o cache em `~/.cache/puppeteer`.
 
 ## Banco de dados
 

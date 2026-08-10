@@ -24,6 +24,10 @@ O racional acima (12% fixos, `AcordoComercial` só divide esses 12% entre NOVYX 
 
 O que **não** está implementado: o checkout/gateway de pagamento (Asaas) descrito no resto deste documento — split real, subconta por organizador, repasse pós-evento — é só desenho ainda. Hoje o resumo financeiro é uma leitura agregada de ingressos emitidos manualmente, sem dinheiro de verdade envolvido. Também não existe nenhum endpoint ou tela para criar/editar um `AcordoComercial` — o `FinanceService` já sabe aplicá-lo se um existir no banco, mas cadastrá-lo hoje exige inserir a linha direto via Prisma Studio (ver [04-modelo-de-dados.md](04-modelo-de-dados.md) e [11-roadmap.md](11-roadmap.md)).
 
+## Adicional de cancelamento flexível (produto pago, fora do split de 12%)
+
+Registrado como regra de negócio futura em [12-pagamentos-e-repasses.md#43](12-pagamentos-e-repasses.md#43-ingresso-com-cancelamento-flexível--produto-pago-10-revertido-só-à-plataforma): um ingresso com opção de cancelamento flexível cobra um adicional de 10% sobre ingresso+taxa que fica **inteiro com a plataforma**, sem passar pelo `AcordoComercial` nem pelo split de 12% descrito acima — é um valor conceitualmente separado da taxa de serviço, não implementado ainda (depende de checkout self-service).
+
 ## Ponto de atenção tributário
 
 **Validar com contador/advogado tributário antes do lançamento — isso não é uma decisão de arquitetura.** O racional de mercado é que, ao usar split real na liquidação (o dinheiro nunca "entra" inteiro na conta da NOVYX), cada parte tributa apenas o que efetivamente recebe — o organizador tributa a receita do ingresso, a NOVYX tributa só a taxa de serviço — evitando a bitributação que ocorreria se 100% do valor passasse pela conta da NOVYX antes do repasse manual. Isso também é relevante porque a Reforma Tributária brasileira (IBS/CBS) está introduzindo seu próprio mecanismo de "split payment" para tributos no pagamento eletrônico, com cronograma de transição já em andamento em 2026 — vale acompanhar isso com o time contábil ao definir a integração fiscal final.

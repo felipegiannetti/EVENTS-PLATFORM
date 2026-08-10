@@ -58,12 +58,26 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 - Por padrão, ingresso **não pode ser repassado** para outro CPF/e-mail depois de emitido
 - Isso é a principal arma antifraude/anticâmbio (evita revenda não autorizada — o "cambismo digital")
 - Configurável por evento (o organizador decide se permite transferência ou não), em vez de travado globalmente — dá flexibilidade comercial sem perder a feature como diferencial
+- **Extensão registrada, ainda não implementada**: além de ligar/desligar, o organizador poderá configurar até quanto tempo antes do evento a transferência ainda é permitida (ex: até 24h antes) — ver [docs/architecture/12-pagamentos-e-repasses.md#41](../architecture/12-pagamentos-e-repasses.md#41-transferência-de-ingresso--prazo-configurável-pelo-organizador)
 
 ### 3.8 Painel do admin geral do sistema (NOVYX)
 - Tela separada da administração do evento — é o **superadmin da plataforma como um todo**
 - Liga/desliga features do sistema (feature flags): ex: desativar temporariamente a geração de parciais por e-mail, ou lançar uma feature nova só para eventos selecionados
 - Configuração comercial (split de taxa de serviço por organizador — ver [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md))
 - Também é onde, no futuro, dá pra colocar: monitoramento de uso, saúde do sistema, gestão de todos os eventos/organizadores cadastrados
+
+### 3.9 Política de cancelamento e página de Políticas
+- Regra de negócio registrada, **página ainda não criada**: o comprador pode cancelar uma compra em até 7 dias corridos após a compra (direito de arrependimento, análogo ao art. 49 do CDC para compras online)
+- Precisa de uma página de Políticas pública expondo essa e outras regras — ver [docs/architecture/12-pagamentos-e-repasses.md#42](../architecture/12-pagamentos-e-repasses.md#42-cancelamento-de-compra--direito-de-arrependimento-7-dias-e-página-de-políticas)
+- Só passa a valer na prática quando existir checkout self-service (hoje não existe "compra" para cancelar dentro de um prazo, só emissão manual pelo organizador)
+
+### 3.10 Ingresso com cancelamento flexível (produto pago, não implementado)
+- Opção no momento da compra: pagar um adicional de **10% sobre ingresso + taxa**, revertido inteiramente à plataforma (nunca ao organizador), em troca de poder cancelar até bem perto do evento (ex: 1 minuto antes)
+- Detalhamento financeiro completo em [docs/architecture/12-pagamentos-e-repasses.md#43](../architecture/12-pagamentos-e-repasses.md#43-ingresso-com-cancelamento-flexível--produto-pago-10-revertido-só-à-plataforma)
+
+### 3.11 Lote especial (privado) com cupom protegido por senha
+- Regra de negócio registrada, não implementada: o organizador cria um lote marcado como especial/privado, e um cupom especial vinculado protegido por senha — o comprador digita a senha num popup para desbloquear a compra desses ingressos
+- Detalhes em [docs/architecture/04-modelo-de-dados.md](../architecture/04-modelo-de-dados.md) e [docs/architecture/11-roadmap.md](../architecture/11-roadmap.md)
 
 ---
 

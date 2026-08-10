@@ -13,4 +13,10 @@
 ## Status de implementação
 
 - **Já implementado**: criptografia reversível (AES-256-GCM, `apps/api/src/infra/crypto/campo-criptografado.util.ts`) para os campos sensíveis de `ContaBancaria` (dados bancários do organizador) — chave só em `CONTA_BANCARIA_ENCRYPTION_KEY` (env, nunca no banco), formato `iv.authTag.ciphertext`. É criptografia de aplicação, não "RDS encryption" (que depende de infraestrutura AWS ainda não provisionada). RBAC por papel e por evento (`RolesGuard`/`EventRoleGuard`), rate limit no login (5/min) e QR assinado HMAC-SHA256 também já valem para o código real, não só para o desenho.
+- **Correções de segurança feitas em revisão** (não eram desenho original, foram achadas e corrigidas depois):
+  - **IDOR nos endpoints de gestão de ingresso**: `buscar`/`atualizar`/`cancelar`/`reenviarEmail` do `TicketsService` passaram a checar que o ingresso pertence mesmo ao `eventoId` da rota (`buscarDoEvento`) antes de qualquer leitura/edição — sem isso, um gestor de QUALQUER evento (com `EventRoleGuard` válido só pro próprio evento) podia manipular o ingresso de outro organizador só sabendo o UUID, que aliás vai em texto puro dentro do próprio QR code.
+  - **CORS**: removida a combinação insegura de origin `*` com `credentials: true` (nunca válida com cookies) — origin agora é restrito à lista configurada.
+  - **Rate limit no registro**: `POST /auth/register` também ganhou throttle (não só o login).
+  - **XSS em email**: strings controladas pelo organizador (nome do evento, endereço, nome do lote etc.) passaram a ser escapadas (`apps/api/src/infra/mail/escapar-html.util.ts`) antes de entrar no HTML do email de confirmação — sem isso, um nome de evento malicioso quebraria o HTML do email de qualquer comprador.
+  - **Headers básicos de segurança** adicionados na API (sem dependência nova).
 - **Ainda não implementado**: Secrets Manager (segredos hoje vivem em `.env` local), rate limit na busca por CPF (não existe busca por CPF — `ListaOff` não tem endpoint algum, ver [03-modulos-backend.md](03-modulos-backend.md)), e log de auditoria (`AuditLog` existe só no schema, nenhum código grava nele).

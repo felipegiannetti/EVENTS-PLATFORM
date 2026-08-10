@@ -32,6 +32,10 @@ export default function PoliticasPage() {
             acontecer a critério do organizador). Esse cancelamento pode ser feito a qualquer momento em{" "}
             <strong className="text-foreground">Meus ingressos</strong>, direto pelo comprador.
           </p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            A taxa de serviço da plataforma não é reembolsada em nenhuma hipótese, mesmo dentro do prazo
+            de {PRAZO_CANCELAMENTO_PADRAO_DIAS} dias — só o valor do ingresso em si é elegível a reembolso.
+          </p>
         </Card>
 
         <Card className="p-6">
@@ -48,6 +52,11 @@ export default function PoliticasPage() {
             deve envolver um adicional de 10% sobre o valor do ingresso (ingresso + taxa de serviço),
             revertido inteiramente à plataforma — nunca ao organizador. Hoje, como não há checkout de
             pagamento implementado, nenhuma cobrança real é feita.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Nem esse adicional de 10%, nem a taxa de serviço normal são reembolsados ao cancelar — é o
+            preço do direito de cancelar até perto do evento, e o direito foi exercido. Só o valor do
+            ingresso em si é elegível a reembolso.
           </p>
         </Card>
 

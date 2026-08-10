@@ -57,6 +57,13 @@ enum TipoDescontoCupom {
   valor_fixo
 }
 
+enum StatusReserva {
+  ativa
+  confirmada
+  expirada
+  cancelada
+}
+
 model Usuario {
   id              String      @id @default(uuid())
   nome            String
@@ -224,13 +231,40 @@ model Lote {
   nome       String
   preco      Decimal  @db.Decimal(10, 2)
   quantidade Int
+  /// Contador real (não mais derivado de _count) — incrementado atomicamente via UPDATE condicional
+  /// (LoteRepository.ocuparVagaEmitidaSeDisponivel) pra nunca passar de `quantidade` mesmo com
+  /// duas emissões concorrentes pro mesmo lote. Nunca decrementado no cancelamento de um ingresso
+  /// (mesma semântica que já valia antes, quando era um _count.ingressos).
+  quantidadeEmitida Int @default(0)
+  /// Vagas seguradas temporariamente por ReservaIngresso (ainda não confirmadas em Ingresso).
+  /// quantidadeEmitida + vagasReservadas nunca pode passar de `quantidade` — ver ReservaIngresso.
+  vagasReservadas Int @default(0)
   /// Lote especial/privado — pensado pra só ficar visível/comprável através de um cupom especial com senha.
   especial   Boolean  @default(false)
   criadoEm   DateTime @default(now())
 
   ingressos Ingresso[]
+  reservas  ReservaIngresso[]
 
   @@map("lotes")
+}
+
+/// Reserva temporária de vaga num lote — infraestrutura para quando existir checkout self-service
+/// (comprador reserva por até 15min enquanto finaliza a compra; se não confirmar, expira e libera a
+/// vaga automaticamente). Concorrência seguida por UPDATE condicional atômico em Lote.vagasReservadas
+/// (nunca por leitura+decisão+escrita separadas). Expiração é *lazy* (checada/aplicada sob demanda,
+/// não por job agendado — ver TicketsService.expirarReservasVencidas e docs/architecture/11-roadmap.md).
+model ReservaIngresso {
+  id             String        @id @default(uuid())
+  loteId         String
+  lote           Lote          @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  status         StatusReserva @default(ativa)
+  /// Sempre criadoEm + 15 minutos — janela fixa por enquanto (não configurável).
+  expiraEm       DateTime
+  compradorEmail String?
+  criadoEm       DateTime      @default(now())
+
+  @@map("reservas_ingresso")
 }
 
 model LinkVenda {

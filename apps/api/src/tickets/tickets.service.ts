@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AtualizarIngressoInput, EmitirIngressoInput } from "@events-platform/shared-types";
-import { formatarEnderecoEvento, podeCancelarSelfService } from "@events-platform/shared-types";
+import { formatarEnderecoEvento, podeCancelarSelfService, PRAZO_RESERVA_MINUTOS } from "@events-platform/shared-types";
 import { escaparHtml } from "../infra/mail/escapar-html.util";
 import { INGRESSO_REPOSITORY, type IngressoRepository } from "./repository/ingresso.repository";
 import { LOTE_REPOSITORY, type LoteRepository } from "../events/repository/lote.repository";
@@ -27,6 +27,10 @@ import { IngressoNaoTransferivelException } from "./exceptions/ingresso-nao-tran
 import { DestinatarioInvalidoException } from "./exceptions/destinatario-invalido.exception";
 import { PrazoTransferenciaExpiradoException } from "./exceptions/prazo-transferencia-expirado.exception";
 import { PrazoCancelamentoExpiradoException } from "./exceptions/prazo-cancelamento-expirado.exception";
+import { RESERVA_REPOSITORY, type ReservaRepository } from "./repository/reserva.repository";
+import type { ReservaModel } from "./model/reserva.model";
+import { ReservaNaoEncontradaException } from "./exceptions/reserva-nao-encontrada.exception";
+import { ReservaNaoDisponivelException } from "./exceptions/reserva-nao-disponivel.exception";
 
 @Injectable()
 export class TicketsService {
@@ -38,6 +42,7 @@ export class TicketsService {
     @Inject(EVENTO_REPOSITORY) private readonly eventoRepository: EventoRepository,
     @Inject(CUPOM_DESCONTO_REPOSITORY) private readonly cupomDescontoRepository: CupomDescontoRepository,
     @Inject(USUARIO_REPOSITORY) private readonly usuarioRepository: UsuarioRepository,
+    @Inject(RESERVA_REPOSITORY) private readonly reservaRepository: ReservaRepository,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
   ) {}
@@ -46,9 +51,6 @@ export class TicketsService {
     const lote = await this.loteRepository.buscarPorId(loteId);
     if (!lote || lote.eventoId !== eventoId) {
       throw new LoteNaoEncontradoException();
-    }
-    if (lote.quantidadeEmitida >= lote.quantidade) {
-      throw new LoteEsgotadoException();
     }
 
     if (input.cupomDescontoId) {
@@ -59,7 +61,22 @@ export class TicketsService {
       if (!cupom.ativo) {
         throw new CupomInativoException();
       }
-      if (cupom.limiteUsos !== null && cupom.usos >= cupom.limiteUsos) {
+    }
+
+    // Reserva atômica de capacidade — cada UPDATE abaixo é uma única instrução condicional
+    // (WHERE ocupadas < quantidade), então duas emissões concorrentes pro mesmo lote/cupom nunca
+    // conseguem "passar" as duas na mesma vaga: só uma afeta a linha, a outra recebe false e falha
+    // de verdade (LoteEsgotadoException/CupomEsgotadoException), sem depender de ler-decidir-escrever
+    // em passos separados (que teria uma corrida real). Ver LoteRepository/CupomDescontoRepository.
+    const vagaOcupada = await this.loteRepository.ocuparVagaEmitidaSeDisponivel(loteId);
+    if (!vagaOcupada) {
+      throw new LoteEsgotadoException();
+    }
+
+    if (input.cupomDescontoId) {
+      const cupomOk = await this.cupomDescontoRepository.incrementarUsosSeDisponivel(input.cupomDescontoId);
+      if (!cupomOk) {
+        await this.loteRepository.liberarVagaEmitida(loteId);
         throw new CupomEsgotadoException();
       }
     }
@@ -82,10 +99,6 @@ export class TicketsService {
       cupomDescontoId: input.cupomDescontoId,
     });
 
-    if (input.cupomDescontoId) {
-      await this.cupomDescontoRepository.incrementarUsos(input.cupomDescontoId);
-    }
-
     // Melhor esforço — o ingresso já foi criado de verdade; se o SMTP não estiver configurado
     // (comum em dev) ou o envio falhar, isso não deve desfazer a emissão. O organizador sempre
     // pode reenviar manualmente depois (reenviarEmail), que aí sim propaga o erro pra UI.
@@ -96,6 +109,127 @@ export class TicketsService {
     }
 
     return ingresso;
+  }
+
+  /**
+   * Infraestrutura para quando existir checkout self-service (ver docs/architecture/11-roadmap.md) —
+   * segura uma vaga do lote por PRAZO_RESERVA_MINUTOS enquanto o comprador "está fazendo a compra".
+   * Mesma trava atômica de emitir(): ocuparVagaReservadaSeDisponivel é uma única instrução SQL
+   * condicional, então duas reservas concorrentes pro último lugar nunca conseguem as duas passar.
+   */
+  async reservar(eventoId: string, loteId: string, compradorEmail?: string): Promise<ReservaModel> {
+    const lote = await this.loteRepository.buscarPorId(loteId);
+    if (!lote || lote.eventoId !== eventoId) {
+      throw new LoteNaoEncontradoException();
+    }
+
+    // Expiração lazy: libera vagas de reservas já vencidas desse lote antes de checar capacidade —
+    // sem isso, reservas abandonadas ficariam "prendendo" vagas pra sempre (não há job agendado).
+    await this.expirarReservasVencidas(loteId);
+
+    const vagaOcupada = await this.loteRepository.ocuparVagaReservadaSeDisponivel(loteId);
+    if (!vagaOcupada) {
+      throw new LoteEsgotadoException();
+    }
+
+    const id = randomUUID();
+    const expiraEm = new Date(Date.now() + PRAZO_RESERVA_MINUTOS * 60 * 1000);
+    return this.reservaRepository.criar({ id, loteId, expiraEm, compradorEmail });
+  }
+
+  /** Converte uma reserva ainda válida no ingresso de verdade — mesmo racional de emitir(), mas a vaga já estava garantida (não precisa checar capacidade de novo, só mover o contador). */
+  async confirmarReserva(eventoId: string, reservaId: string, input: EmitirIngressoInput): Promise<IngressoModel> {
+    const reserva = await this.buscarReserva(reservaId);
+    const lote = await this.loteRepository.buscarPorId(reserva.loteId);
+    if (!lote || lote.eventoId !== eventoId) {
+      throw new ReservaNaoEncontradaException();
+    }
+    if (reserva.status !== "ativa" || reserva.expiraEm.getTime() < Date.now()) {
+      if (reserva.status === "ativa") {
+        // Já venceu mas a expiração lazy ainda não tinha rodado pra essa reserva — roda agora.
+        await this.expirarReservasVencidas(reserva.loteId);
+      }
+      throw new ReservaNaoDisponivelException();
+    }
+
+    if (input.cupomDescontoId) {
+      const cupom = await this.cupomDescontoRepository.buscarPorId(input.cupomDescontoId);
+      if (!cupom || cupom.eventoId !== eventoId) {
+        throw new CupomNaoEncontradoException();
+      }
+      if (!cupom.ativo) {
+        throw new CupomInativoException();
+      }
+      const cupomOk = await this.cupomDescontoRepository.incrementarUsosSeDisponivel(input.cupomDescontoId);
+      if (!cupomOk) {
+        throw new CupomEsgotadoException();
+      }
+    }
+
+    await this.loteRepository.confirmarVagaReservada(reserva.loteId);
+    await this.reservaRepository.atualizarStatus(reservaId, "confirmada");
+
+    const evento = await this.eventoRepository.buscarPorId(eventoId);
+    const id = randomUUID();
+    const qrToken = gerarQrToken(id, this.config.getOrThrow<string>("QR_TOKEN_SECRET"));
+
+    const ingresso = await this.ingressoRepository.criar({
+      id,
+      eventoId,
+      loteId: reserva.loteId,
+      qrToken,
+      transferivel: evento?.transferivel ?? false,
+      cancelamentoFlexivel: input.cancelamentoFlexivel,
+      compradorNome: input.compradorNome,
+      compradorEmail: input.compradorEmail,
+      compradorDocumento: input.compradorDocumento,
+      cupomDescontoId: input.cupomDescontoId,
+    });
+
+    try {
+      await this.enviarEmailConfirmacao(ingresso);
+    } catch (erro) {
+      this.logger.warn(`Não foi possível enviar o email de confirmação do ingresso ${id} (reserva ${reservaId}): ${(erro as Error).message}`);
+    }
+
+    return ingresso;
+  }
+
+  /** Desiste da reserva antes do prazo — libera a vaga na hora, sem esperar os 15 minutos. */
+  async cancelarReserva(eventoId: string, reservaId: string): Promise<void> {
+    const reserva = await this.buscarReserva(reservaId);
+    const lote = await this.loteRepository.buscarPorId(reserva.loteId);
+    if (!lote || lote.eventoId !== eventoId) {
+      throw new ReservaNaoEncontradaException();
+    }
+    if (reserva.status !== "ativa") {
+      throw new ReservaNaoDisponivelException();
+    }
+
+    await this.loteRepository.liberarVagaReservada(reserva.loteId);
+    await this.reservaRepository.atualizarStatus(reservaId, "cancelada");
+  }
+
+  async buscarReserva(id: string): Promise<ReservaModel> {
+    const reserva = await this.reservaRepository.buscarPorId(id);
+    if (!reserva) {
+      throw new ReservaNaoEncontradaException();
+    }
+    return reserva;
+  }
+
+  /**
+   * Expiração lazy — roda sob demanda (chamada antes de reservar/confirmar) em vez de um job
+   * agendado, já que não existe fila/scheduler no projeto ainda (ver docs/architecture/11-roadmap.md).
+   * Correta mesmo sem cron: nenhuma reserva "vencida" consegue ser confirmada (confirmarReserva
+   * sempre revalida expiraEm na hora), essa varredura só libera a vaga pros próximos de verdade.
+   */
+  async expirarReservasVencidas(loteId: string): Promise<void> {
+    const vencidas = await this.reservaRepository.listarAtivasVencidas(loteId, new Date());
+    for (const reserva of vencidas) {
+      await this.loteRepository.liberarVagaReservada(loteId);
+      await this.reservaRepository.atualizarStatus(reserva.id, "expirada");
+    }
   }
 
   async atualizar(eventoId: string, id: string, input: AtualizarIngressoInput): Promise<IngressoModel> {

@@ -56,7 +56,8 @@ function FormularioDetalhes({ token }: { token: string }) {
   const [cep, setCep] = useState("");
   const [somenteMaioresDeIdade, setSomenteMaioresDeIdade] = useState(false);
   const [transferivel, setTransferivel] = useState(false);
-  const [prazoTransferenciaHoras, setPrazoTransferenciaHoras] = useState("");
+  const [prazoTransferenciaValor, setPrazoTransferenciaValor] = useState("");
+  const [prazoTransferenciaUnidade, setPrazoTransferenciaUnidade] = useState<"horas" | "dias">("horas");
 
   // Banner, descrição e contato — sempre editáveis (etapa opcional do assistente ou Configurações)
   const [descricao, setDescricao] = useState("");
@@ -88,7 +89,19 @@ function FormularioDetalhes({ token }: { token: string }) {
         setCep(atual.cep ?? "");
         setSomenteMaioresDeIdade(atual.somenteMaioresDeIdade);
         setTransferivel(atual.transferivel);
-        setPrazoTransferenciaHoras(atual.prazoTransferenciaHoras != null ? String(atual.prazoTransferenciaHoras) : "");
+        if (atual.prazoTransferenciaHoras != null) {
+          // Exibe em dias quando dá uma divisão exata (ex.: 48h -> "2 dias"), senão em horas.
+          if (atual.prazoTransferenciaHoras % 24 === 0) {
+            setPrazoTransferenciaValor(String(atual.prazoTransferenciaHoras / 24));
+            setPrazoTransferenciaUnidade("dias");
+          } else {
+            setPrazoTransferenciaValor(String(atual.prazoTransferenciaHoras));
+            setPrazoTransferenciaUnidade("horas");
+          }
+        } else {
+          setPrazoTransferenciaValor("");
+          setPrazoTransferenciaUnidade("horas");
+        }
         setDescricao(atual.descricao ?? "");
         setContatoNome(atual.contatoNome ?? "");
         setContatoEmail(atual.contatoEmail ?? "");
@@ -162,7 +175,10 @@ function FormularioDetalhes({ token }: { token: string }) {
             cep,
             somenteMaioresDeIdade,
             transferivel,
-            prazoTransferenciaHoras: transferivel && prazoTransferenciaHoras ? Number(prazoTransferenciaHoras) : null,
+            prazoTransferenciaHoras:
+              transferivel && prazoTransferenciaValor
+                ? Number(prazoTransferenciaValor) * (prazoTransferenciaUnidade === "dias" ? 24 : 1)
+                : null,
             descricao: descricao || undefined,
             contatoNome: contatoNome || undefined,
             contatoEmail: contatoEmail || undefined,
@@ -254,16 +270,28 @@ function FormularioDetalhes({ token }: { token: string }) {
                   <span className="text-sm text-foreground">Permitir que o comprador transfira o ingresso para outra pessoa</span>
                 </label>
                 {transferivel && (
-                  <div className="mt-3 max-w-xs">
-                    <Input
-                      id="prazoTransferenciaHoras"
-                      label="Bloquear transferência a partir de quantas horas antes do evento (opcional)"
-                      type="number"
-                      min={1}
-                      placeholder="Sem limite — deixe em branco"
-                      value={prazoTransferenciaHoras}
-                      onChange={(e) => setPrazoTransferenciaHoras(e.target.value)}
-                    />
+                  <div className="mt-3">
+                    <span className="text-sm font-semibold text-foreground/80">
+                      Bloquear transferência a partir de quanto tempo antes do evento (opcional)
+                    </span>
+                    <div className="mt-2 flex max-w-xs gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="Sem limite"
+                        value={prazoTransferenciaValor}
+                        onChange={(e) => setPrazoTransferenciaValor(e.target.value)}
+                        className="h-12 w-28 rounded-xl border border-border/15 bg-background/60 px-4 text-sm text-foreground shadow-inner outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      />
+                      <select
+                        value={prazoTransferenciaUnidade}
+                        onChange={(e) => setPrazoTransferenciaUnidade(e.target.value as "horas" | "dias")}
+                        className="h-12 flex-1 rounded-xl border border-border/15 bg-background/60 px-3 text-sm text-foreground shadow-inner outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      >
+                        <option value="horas">Horas antes</option>
+                        <option value="dias">Dias antes</option>
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>

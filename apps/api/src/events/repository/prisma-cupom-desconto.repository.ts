@@ -54,6 +54,14 @@ export class PrismaCupomDescontoRepository implements CupomDescontoRepository {
     await this.prisma.cupomDesconto.update({ where: { id }, data: { usos: { increment: 1 } } });
   }
 
+  async incrementarUsosSeDisponivel(id: string): Promise<boolean> {
+    const linhasAfetadas = await this.prisma.$executeRaw`
+      UPDATE "cupons_desconto" SET "usos" = "usos" + 1
+      WHERE "id" = ${id} AND ("limiteUsos" IS NULL OR "usos" < "limiteUsos")
+    `;
+    return linhasAfetadas === 1;
+  }
+
   /** `where: usos > 0` evita ir negativo — não deveria acontecer com a contabilidade consistente, mas é barato garantir. */
   async decrementarUsos(id: string): Promise<void> {
     await this.prisma.cupomDesconto.updateMany({ where: { id, usos: { gt: 0 } }, data: { usos: { decrement: 1 } } });

@@ -35,4 +35,11 @@ export interface CupomDescontoRepository {
   /** Chamado quando um ingresso é emitido/cancelado marcando esse cupom como usado — ver Ingresso.cupomDescontoId. */
   incrementarUsos(id: string): Promise<void>;
   decrementarUsos(id: string): Promise<void>;
+  /**
+   * Versão atômica do incremento — só efetiva se ainda houver espaço (limiteUsos null = sempre tem
+   * espaço). Uma única instrução SQL condicional, então duas emissões concorrentes com o mesmo cupom
+   * perto do limite nunca conseguem "passar" as duas juntas (ver TicketsService.emitir). Retorna false
+   * se o cupom já estava esgotado.
+   */
+  incrementarUsosSeDisponivel(id: string): Promise<boolean>;
 }

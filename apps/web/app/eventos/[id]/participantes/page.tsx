@@ -334,6 +334,11 @@ function PainelParticipantes({ token }: { token: string }) {
               O ingresso de <strong className="text-foreground">{ingressoCancelando.compradorNome ?? ingressoCancelando.compradorEmail ?? "este comprador"}</strong> vai
               ficar marcado como cancelado e não vai mais passar no check-in. Essa ação não pode ser desfeita por aqui.
             </p>
+            <p className="mt-3 rounded-xl bg-warning/10 px-3 py-2.5 text-xs leading-5 text-warning">
+              Como ainda não existe checkout de pagamento na plataforma, nenhum valor foi cobrado nesta emissão — por isso
+              nenhum reembolso em dinheiro é processado aqui. Quando o checkout existir, cancelar por aqui vai disparar o
+              estorno automaticamente (ver docs/architecture/11-roadmap.md).
+            </p>
             <div className="mt-5 flex gap-3">
               <Button variant="secondary" onClick={() => setIngressoCancelando(null)} className="flex-1" disabled={cancelando}>
                 Voltar

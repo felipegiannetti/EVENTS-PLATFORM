@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { formatarReais } from "@/components/ui/stat";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { ApiError } from "@/lib/api-client";
-import { atualizarEvento, buscarEvento, urlBannerEvento, urlPublicaEvento } from "@/lib/events-client";
+import { atualizarEvento, buscarEvento, urlPublicaEvento } from "@/lib/events-client";
 import { listarIngressos } from "@/lib/tickets-client";
 import { buscarResumoFinanceiro } from "@/lib/finance-client";
 
@@ -80,13 +80,6 @@ function EventoDetalhe({ token }: { token: string }) {
 
   return (
     <main className="page-shell max-w-5xl">
-      {evento.temBanner && (
-        <div className="mb-6 overflow-hidden rounded-2xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={urlBannerEvento(id)} alt={evento.nome} className="h-56 w-full object-cover sm:h-72" />
-        </div>
-      )}
-
       <span className="eyebrow">Painel do evento</span>
       <h1 className="page-title">{evento.nome}</h1>
       <p className="page-description">

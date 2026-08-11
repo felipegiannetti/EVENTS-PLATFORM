@@ -45,3 +45,6 @@ export type TipoPessoa = (typeof TIPO_PESSOA)[number];
 
 export const TIPO_DESCONTO_CUPOM = ["percentual", "valor_fixo"] as const;
 export type TipoDescontoCupom = (typeof TIPO_DESCONTO_CUPOM)[number];
+
+export const ESCOPO_ACORDO_COMERCIAL = ["todos_eventos", "evento_especifico", "proximos_n_eventos"] as const;
+export type EscopoAcordoComercial = (typeof ESCOPO_ACORDO_COMERCIAL)[number];

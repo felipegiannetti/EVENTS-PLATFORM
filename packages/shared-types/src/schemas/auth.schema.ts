@@ -16,6 +16,7 @@ export const registerSchema = z
     tipoPessoa: z.enum(TIPO_PESSOA),
     documento: z.string().min(11).max(18),
     dataNascimento: z.string().date().optional(),
+    codigoIndicacao: z.string().trim().min(8).max(64).optional(),
   })
   .superRefine((dados, ctx) => {
     if (dados.tipoPessoa === "fisica") {

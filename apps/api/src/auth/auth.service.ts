@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID, createHash } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
@@ -20,6 +20,7 @@ import { RefreshTokenInvalidoException } from "./exceptions/refresh-token-invali
 import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontrado.exception";
 import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.exception";
 import { ContaComEventosException } from "./exceptions/conta-com-eventos.exception";
+import { PrismaService } from "../infra/prisma/prisma.service";
 
 export interface SessaoContexto {
   ip?: string;
@@ -38,14 +39,25 @@ export class AuthService {
     private readonly papelAcessoRepository: PapelAcessoRepository,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
     this.refreshTtlDays = Number(this.config.get("JWT_REFRESH_TTL_DAYS") ?? 90);
   }
 
   async registrar(dados: RegisterInput): Promise<UsuarioModel> {
-    const [existentePorEmail, existentePorDocumento] = await Promise.all([
+    const [existentePorEmail, existentePorDocumento, oferta] = await Promise.all([
       this.usuarioRepository.buscarPorEmail(dados.email),
       this.usuarioRepository.buscarPorDocumento(dados.documento),
+      dados.codigoIndicacao
+        ? this.prisma.ofertaIndicacao.findFirst({
+            where: { codigo: dados.codigoIndicacao, ativo: true, programa: { ativo: true } },
+            select: {
+              id: true,
+              percentualBeneficioOrganizador: true,
+              programa: { select: { usuarioId: true } },
+            },
+          })
+        : Promise.resolve(null),
     ]);
     if (existentePorEmail) {
       throw new EmailJaCadastradoException();
@@ -53,16 +65,38 @@ export class AuthService {
     if (existentePorDocumento) {
       throw new DocumentoJaCadastradoException();
     }
+    if (dados.codigoIndicacao && !oferta) {
+      throw new BadRequestException("Link de indicação inválido ou desativado.");
+    }
 
     const senhaHash = await argon2.hash(dados.senha, { type: argon2.argon2id });
-    return this.usuarioRepository.criar({
-      nome: dados.nome,
-      email: dados.email,
-      senhaHash,
-      tipoPessoa: dados.tipoPessoa,
-      documento: dados.documento,
-      dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
+    const usuarioId = await this.prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.create({
+        data: {
+          nome: dados.nome,
+          email: dados.email,
+          senhaHash,
+          tipoPessoa: dados.tipoPessoa,
+          documento: dados.documento,
+          dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
+        },
+        select: { id: true },
+      });
+      if (oferta) {
+        await tx.indicacao.create({
+          data: {
+            indicadorId: oferta.programa.usuarioId,
+            indicadoId: usuario.id,
+            ofertaId: oferta.id,
+            percentualBeneficioOrganizador: oferta.percentualBeneficioOrganizador,
+          },
+        });
+      }
+      return usuario.id;
     });
+    const usuario = await this.usuarioRepository.buscarPorId(usuarioId);
+    if (!usuario) throw new Error("Usuário criado não foi encontrado.");
+    return usuario;
   }
 
   async buscarPerfil(usuarioId: string): Promise<UsuarioModel> {
@@ -111,6 +145,14 @@ export class AuthService {
     const papeis = await this.papelAcessoRepository.listarPorUsuario(usuarioId);
     if (papeis.some((papel) => papel.papel === "owner")) {
       throw new ContaComEventosException();
+    }
+    const possuiVinculoIndicacao = await this.prisma.indicacao.findFirst({
+      where: { OR: [{ indicadorId: usuarioId }, { indicadoId: usuarioId }] },
+      select: { id: true },
+    });
+    const possuiPrograma = await this.prisma.programaIndicacao.findUnique({ where: { usuarioId }, select: { id: true } });
+    if (possuiVinculoIndicacao || possuiPrograma) {
+      throw new ConflictException("Sua conta possui vínculos financeiros de indicação e não pode ser excluída diretamente.");
     }
     await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
     await this.usuarioRepository.remover(usuarioId);

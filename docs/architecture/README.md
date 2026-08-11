@@ -14,7 +14,7 @@ Ver o resumo funcional do produto em [docs/product/resumo-produto.md](../product
 - **Repositório**: Monorepo (Turborepo).
 - **Cloud**: AWS, priorizando serviços pay-as-you-go para manter custo baixo no início e escalar sem re-arquitetar.
 - **Pagamento**: Asaas (PIX + boleto + cartão, split de pagamento nativo), desenhado como módulo plugável.
-- **Taxa de serviço**: 12% fixos, com divisão configurável entre NOVYX e organizador como incentivo comercial (ver [09-modelo-financeiro.md](09-modelo-financeiro.md)).
+- **Taxa de serviço**: 12% fixos no total, distribuídos pelo motor financeiro entre plataforma, acordo ADMIN do organizador, benefício referral do organizador e comissão do indicador (ver [09-modelo-financeiro.md](09-modelo-financeiro.md)).
 
 ## Diagrama geral
 
@@ -78,4 +78,4 @@ Ver o resumo funcional do produto em [docs/product/resumo-produto.md](../product
 10. [Roadmap e fora de escopo](11-roadmap.md)
 11. [Pagamentos, repasses e central financeira — especificação futura](12-pagamentos-e-repasses.md)
 
-> **Nota de status (atualizada após rodadas de implementação)**: uma fatia real do produto já está construída — ver [docs/implementation/README.md](../implementation/README.md) para o que existe de verdade no código hoje. Este conjunto de documentos mistura decisões já implementadas (modelo de dados core, RBAC por evento, modelo financeiro de split/taxa) com desenho ainda **não construído** (gateway de pagamento/Asaas, fila assíncrona, infraestrutura AWS, app de check-in em React Native, módulos `checkin`/`guestlist`/`reports`/`admin`/`notifications`/`audit-log` como serviços próprios). Onde um documento descreve algo que ainda não existe no código, isso é desenho para orientar a implementação futura, não um relato do que já roda em produção — consulte sempre a fatia de implementação para saber o que é real. [Roadmap e gaps conhecidos](11-roadmap.md) lista o que falta de forma explícita.
+> **Nota de status (atualizada após rodadas de implementação)**: uma fatia real do produto já está construída — ver [docs/implementation/README.md](../implementation/README.md). Modelo de dados core, RBAC, motor de distribuição da taxa, programa de indicação e painel ADMIN de acordos já existem. Continuam como desenho futuro o gateway/Asaas e seu split real, filas, infraestrutura AWS, app React Native e as áreas ainda não construídas de guestlist, reports, notifications, feature flags e auditoria ampla. Onde um documento descreve esses itens, trata-se de orientação futura, não de funcionalidade em produção.

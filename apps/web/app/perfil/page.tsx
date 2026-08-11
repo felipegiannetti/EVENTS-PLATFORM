@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, CalendarDays, IdCard, KeyRound, MapPin, Ticket, Trash2, User } from "lucide-react";
+import { AlertTriangle, CalendarDays, HandCoins, IdCard, KeyRound, MapPin, ShieldCheck, Ticket, Trash2, User } from "lucide-react";
 import type { EventoResponse, MeuIngressoResponse, UsuarioResponse } from "@events-platform/shared-types";
 import { formatarLocalizacaoEvento, ROTULO_CATEGORIA_EVENTO } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
@@ -67,6 +67,16 @@ function Perfil({ token }: { token: string }) {
               <item.icon size={16} /> {item.label}
             </button>
           ))}
+          <div className="hidden border-t border-border/10 pt-3 lg:block">
+            <Link href="/indicacoes" className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-muted transition-all hover:bg-primary/10 hover:text-primary">
+              <HandCoins size={16} /> Indique e ganhe
+            </Link>
+            {perfil.papelGlobal === "admin_geral" && (
+              <Link href="/admin" className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-muted transition-all hover:bg-primary/10 hover:text-primary">
+                <ShieldCheck size={16} /> Administração
+              </Link>
+            )}
+          </div>
         </nav>
 
         <div>

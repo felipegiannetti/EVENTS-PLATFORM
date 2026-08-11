@@ -7,16 +7,17 @@ import {
 import { ContaBancariaModel } from "./model/conta-bancaria.model";
 import { ContaBancariaNaoEncontradaException } from "./exceptions/conta-bancaria-nao-encontrada.exception";
 import { PrismaService } from "../infra/prisma/prisma.service";
+import { DistribuicaoTaxaService } from "./distribuicao-taxa.service";
+import { TAXA_SERVICO_PERCENTUAL } from "./distribuicao-taxa.util";
 
 /** Taxa fixa de serviço da NOVYX — ver docs/architecture/09-modelo-financeiro.md. Só muda por evento/organizador via um AcordoComercial ativo. */
-const TAXA_SERVICO_PADRAO_PERCENTUAL = 12;
-
 @Injectable()
 export class FinanceService {
   constructor(
     @Inject(CONTA_BANCARIA_REPOSITORY)
     private readonly contaBancariaRepository: ContaBancariaRepository,
     private readonly prisma: PrismaService,
+    private readonly distribuicaoTaxaService: DistribuicaoTaxaService,
   ) {}
 
   async cadastrarContaBancaria(
@@ -56,10 +57,7 @@ export class FinanceService {
     const [evento, ingressos] = await Promise.all([
       this.prisma.evento.findUnique({
         where: { id: eventoId },
-        select: {
-          taxaPagaPor: true,
-          papeisAcesso: { where: { papel: "owner" }, select: { usuarioId: true }, take: 1 },
-        },
+        select: { taxaPagaPor: true },
       }),
       this.prisma.ingresso.findMany({
         where: { eventoId },
@@ -72,31 +70,16 @@ export class FinanceService {
     const valorIngressos = validos.reduce((total, ingresso) => total + Number(ingresso.lote.preco), 0);
 
     const taxaPagaPor = evento?.taxaPagaPor ?? "comprador";
-    const organizadorId = evento?.papeisAcesso[0]?.usuarioId;
-
-    const acordo = organizadorId
-      ? await this.prisma.acordoComercial.findFirst({
-          where: {
-            organizadorId,
-            ativo: true,
-            OR: [
-              { escopo: "evento_especifico", eventoId },
-              { escopo: "todos_eventos" },
-            ],
-          },
-          orderBy: { criadoEm: "desc" },
-        })
-      : null;
-
-    const percentualTaxaServico = TAXA_SERVICO_PADRAO_PERCENTUAL;
-    const percentualDevolvidoAoOrganizador = acordo ? Number(acordo.percentualOrganizador) : 0;
+    const distribuicao = await this.distribuicaoTaxaService.calcular(eventoId);
+    const percentualTaxaServico = TAXA_SERVICO_PERCENTUAL;
+    const percentualDevolvidoAoOrganizador = distribuicao.percentualAcordoOrganizador;
 
     const taxaTotal = valorIngressos * (percentualTaxaServico / 100);
-    const kickback = valorIngressos * (percentualDevolvidoAoOrganizador / 100);
-    const taxaRetidaPelaNovyx = taxaTotal - kickback;
+    const valorEstimadoIndicador = valorIngressos * (distribuicao.percentualTotalIndicador / 100);
+    const taxaRetidaPelaNovyx = valorIngressos * (distribuicao.percentualLiquidoPlataforma / 100);
 
     const vendasBrutas = taxaPagaPor === "comprador" ? valorIngressos + taxaTotal : valorIngressos;
-    const vendaLiquida = vendasBrutas - taxaRetidaPelaNovyx;
+    const vendaLiquida = vendasBrutas - taxaRetidaPelaNovyx - valorEstimadoIndicador;
     const ticketMedioBruto = validos.length > 0 ? vendasBrutas / validos.length : 0;
 
     return {
@@ -107,6 +90,13 @@ export class FinanceService {
       ingressosCancelados: cancelados,
       percentualTaxaServico,
       percentualDevolvidoAoOrganizador,
+      percentualBeneficioIndicacaoOrganizador: distribuicao.percentualBeneficioIndicacaoOrganizador,
+      percentualIndicadorBase: distribuicao.percentualIndicadorBase,
+      percentualBonusIndicador: distribuicao.percentualBonusIndicador,
+      percentualTotalIndicador: distribuicao.percentualTotalIndicador,
+      percentualLiquidoPlataforma: distribuicao.percentualLiquidoPlataforma,
+      valorEstimadoIndicador,
+      valorBeneficioIndicacaoOrganizador: valorIngressos * (distribuicao.percentualBeneficioIndicacaoOrganizador / 100),
       taxaPagaPor,
     };
   }

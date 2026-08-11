@@ -68,6 +68,16 @@ enum StatusReserva {
   cancelada
 }
 
+enum StatusComissaoIndicacao {
+  estimada
+  confirmada
+  elegivel
+  processando
+  paga
+  bloqueada
+  revertida
+}
+
 model Usuario {
   id              String      @id @default(uuid())
   nome            String
@@ -83,11 +93,15 @@ model Usuario {
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
-  papeisAcesso      PapelAcesso[]
-  refreshTokens     RefreshToken[]
-  auditLogs         AuditLog[]
-  acordosComerciais AcordoComercial[] @relation("AcordoComercialOrganizador")
-  acordosDefinidos  AcordoComercial[] @relation("AcordoComercialAdmin")
+  papeisAcesso       PapelAcesso[]
+  refreshTokens      RefreshToken[]
+  auditLogs          AuditLog[]
+  acordosComerciais  AcordoComercial[]  @relation("AcordoComercialOrganizador")
+  acordosDefinidos   AcordoComercial[]  @relation("AcordoComercialAdmin")
+  programaIndicacao  ProgramaIndicacao?
+  indicacoesFeitas   Indicacao[]        @relation("IndicadorIndicacao")
+  indicacaoRecebida  Indicacao?         @relation("IndicadoIndicacao")
+  eventosOrganizados Evento[]           @relation("EventoOrganizador")
 
   @@map("usuarios")
 }
@@ -129,49 +143,56 @@ model PapelAcesso {
 }
 
 model Evento {
-  id           String      @id @default(uuid())
-  nome         String
-  data         DateTime
+  id                      String          @id @default(uuid())
+  nome                    String
+  data                    DateTime
   /// Opcional — evento sem horário de término definido ainda é válido (ex: sem hora certa pra acabar).
-  dataFim      DateTime?
-  local        String
-  cidade       String?
-  estado       String?
-  pais         String?
+  dataFim                 DateTime?
+  local                   String
+  cidade                  String?
+  estado                  String?
+  pais                    String?
   /// Endereço detalhado — exibido sempre como "cidade, estado - rua + número + complemento, bairro - CEP: xxxxx-xxx" (ver formatarEnderecoEvento em shared-types).
-  rua          String?
-  numero       String?
-  complemento  String?
-  bairro       String?
-  cep          String?
+  rua                     String?
+  numero                  String?
+  complemento             String?
+  bairro                  String?
+  cep                     String?
   /// Classificação etária — true = evento só pra maiores de 18.
-  somenteMaioresDeIdade Boolean @default(false)
-  categoria    CategoriaEvento @default(outros)
-  transferivel Boolean     @default(false)
+  somenteMaioresDeIdade   Boolean         @default(false)
+  categoria               CategoriaEvento @default(outros)
+  transferivel            Boolean         @default(false)
   /// Só tem efeito quando transferivel=true. null = sem limite de prazo (pode transferir até o início do evento).
   /// Quando setado, bloqueia transferência se agora > (data do evento - prazoTransferenciaHoras).
   prazoTransferenciaHoras Int?
-  taxaPagaPor  TaxaPagaPor @default(comprador)
+  taxaPagaPor             TaxaPagaPor     @default(comprador)
   /// Banner do evento salvo como bytes direto no Postgres (bytea), não em storage externo/URL — decisão explícita do produto. Ver docs/architecture/04-modelo-de-dados.md.
-  imagemBanner     Bytes?
-  imagemBannerTipo String?
+  imagemBanner            Bytes?
+  imagemBannerTipo        String?
   /// O evento existe por completo independente disso — este campo só controla se COMPRADORES já enxergam ele em GET /events/public. Privado (false) por padrão; só quem tem PapelAcesso enxerga até o organizador liberar (e pode tornar privado de novo depois).
-  publicado       Boolean @default(false)
-  descricao       String?
-  contatoNome     String?
-  contatoEmail    String?
-  contatoTelefone String?
-  criadoEm     DateTime    @default(now())
-  atualizadoEm DateTime    @updatedAt
+  publicado               Boolean         @default(false)
+  descricao               String?
+  contatoNome             String?
+  contatoEmail            String?
+  contatoTelefone         String?
+  criadoEm                DateTime        @default(now())
+  atualizadoEm            DateTime        @updatedAt
 
-  lotes             Lote[]
-  linksVenda        LinkVenda[]
-  papeisAcesso      PapelAcesso[]
-  ingressos         Ingresso[]
-  listaOff          ListaOff[]
-  acordosComerciais AcordoComercial[]
-  contaBancaria     ContaBancaria?
-  cupons            CupomDesconto[]
+  /// Criador/responsável financeiro imutável do evento. PapelAcesso continua controlando acesso,
+  /// mas não deve decidir atribuição de acordo ou indicação.
+  organizadorId String?
+  organizador   Usuario? @relation("EventoOrganizador", fields: [organizadorId], references: [id])
+
+  lotes              Lote[]
+  linksVenda         LinkVenda[]
+  papeisAcesso       PapelAcesso[]
+  ingressos          Ingresso[]
+  listaOff           ListaOff[]
+  acordosComerciais  AcordoComercial[]
+  contaBancaria      ContaBancaria?
+  cupons             CupomDesconto[]
+  primeiraIndicacao  Indicacao?          @relation("PrimeiroEventoPagoIndicacao")
+  comissoesIndicacao ComissaoIndicacao[]
 
   @@map("eventos")
 }
@@ -180,25 +201,25 @@ model Evento {
 /// futura fatia de checkout (ainda não existe compra paga self-service); por enquanto é só o
 /// cadastro/gestão do cupom em si.
 model CupomDesconto {
-  id       String            @id @default(uuid())
-  eventoId String
-  evento   Evento            @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  codigo   String
-  tipo     TipoDescontoCupom
-  valor    Decimal           @db.Decimal(10, 2)
-  ativo    Boolean           @default(true)
+  id         String            @id @default(uuid())
+  eventoId   String
+  evento     Evento            @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  codigo     String
+  tipo       TipoDescontoCupom
+  valor      Decimal           @db.Decimal(10, 2)
+  ativo      Boolean           @default(true)
   /// null = ilimitado (padrão). Quando setado, emitir um ingresso com esse cupom passa a ser bloqueado
   /// assim que usos >= limiteUsos — ver CupomEsgotadoException.
   limiteUsos Int?
   /// Cupom especial (protegido por senha) — pensado pra dar acesso a lotes especiais (Lote.especial).
   /// Nunca retornado em nenhuma resposta da API; só usado para verificar a senha no desbloqueio público.
-  especial   Boolean  @default(false)
+  especial   Boolean           @default(false)
   senhaHash  String?
   /// Incrementado quando um ingresso é emitido já apontando pra esse cupom (ver Ingresso.cupomDescontoId)
   /// e decrementado se esse ingresso for cancelado — ainda não conta vendas via checkout self-service
   /// (que não existe), só emissão manual que o organizador marcou como tendo usado o cupom.
-  usos     Int               @default(0)
-  criadoEm DateTime          @default(now())
+  usos       Int               @default(0)
+  criadoEm   DateTime          @default(now())
 
   ingressos Ingresso[]
 
@@ -229,23 +250,23 @@ model ContaBancaria {
 }
 
 model Lote {
-  id         String   @id @default(uuid())
-  eventoId   String
-  evento     Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  nome       String
-  preco      Decimal  @db.Decimal(10, 2)
-  quantidade Int
+  id                String   @id @default(uuid())
+  eventoId          String
+  evento            Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  nome              String
+  preco             Decimal  @db.Decimal(10, 2)
+  quantidade        Int
   /// Contador real (não mais derivado de _count) — incrementado atomicamente via UPDATE condicional
   /// (LoteRepository.ocuparVagaEmitidaSeDisponivel) pra nunca passar de `quantidade` mesmo com
   /// duas emissões concorrentes pro mesmo lote. Nunca decrementado no cancelamento de um ingresso
   /// (mesma semântica que já valia antes, quando era um _count.ingressos).
-  quantidadeEmitida Int @default(0)
+  quantidadeEmitida Int      @default(0)
   /// Vagas seguradas temporariamente por ReservaIngresso (ainda não confirmadas em Ingresso).
   /// quantidadeEmitida + vagasReservadas nunca pode passar de `quantidade` — ver ReservaIngresso.
-  vagasReservadas Int @default(0)
+  vagasReservadas   Int      @default(0)
   /// Lote especial/privado — pensado pra só ficar visível/comprável através de um cupom especial com senha.
-  especial   Boolean  @default(false)
-  criadoEm   DateTime @default(now())
+  especial          Boolean  @default(false)
+  criadoEm          DateTime @default(now())
 
   ingressos Ingresso[]
   reservas  ReservaIngresso[]
@@ -287,34 +308,34 @@ model LinkVenda {
 
 /// version: lock otimista usado pelo módulo checkin (fatia futura) para impedir dupla validação de QR em corrida.
 model Ingresso {
-  id           String         @id @default(uuid())
-  eventoId     String
-  evento       Evento         @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  loteId       String
-  lote         Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  linkVendaId  String?
-  linkVenda    LinkVenda?     @relation(fields: [linkVendaId], references: [id])
+  id                             String         @id @default(uuid())
+  eventoId                       String
+  evento                         Evento         @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  loteId                         String
+  lote                           Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  linkVendaId                    String?
+  linkVenda                      LinkVenda?     @relation(fields: [linkVendaId], references: [id])
   /// Cupom que o organizador marcou como usado nesta emissão (opcional) — ver CupomDesconto.usos.
-  cupomDescontoId String?
-  cupomDesconto   CupomDesconto? @relation(fields: [cupomDescontoId], references: [id])
-  status       StatusIngresso @default(valido)
-  qrToken      String         @unique
-  transferivel Boolean        @default(false)
+  cupomDescontoId                String?
+  cupomDesconto                  CupomDesconto? @relation(fields: [cupomDescontoId], references: [id])
+  status                         StatusIngresso @default(valido)
+  qrToken                        String         @unique
+  transferivel                   Boolean        @default(false)
   /// Cancelamento flexível — comprador pode cancelar a qualquer momento até perto do início do evento
   /// (ver TicketsService.cancelarSeProprio), em vez da janela padrão de 7 dias corridos da emissão.
   /// Marcado pelo organizador na emissão manual — não há cobrança real do adicional de 10% associado
   /// a essa opção, já que não existe checkout/pagamento implementado (ver docs/architecture/12-pagamentos-e-repasses.md#43).
-  cancelamentoFlexivel Boolean @default(false)
-  version      Int            @default(0)
+  cancelamentoFlexivel           Boolean        @default(false)
+  version                        Int            @default(0)
   /// Preenchidos na emissão manual — ainda não existe checkout self-service, então nem todo ingresso tem comprador (ex: cortesias sem contato coletado). compradorEmail é o que liga um ingresso ao 'Meus ingressos' de um Usuario.
-  compradorNome      String?
-  compradorEmail     String?
-  compradorDocumento String?
+  compradorNome                  String?
+  compradorEmail                 String?
+  compradorDocumento             String?
   /// Preenchido quando status='aguardando_aceite' — o email de quem precisa aceitar a transferência
   /// pra virar o novo compradorEmail. Nunca coexiste com o ingresso sendo 'valido'.
   destinatarioTransferenciaEmail String?
-  criadoEm     DateTime       @default(now())
-  atualizadoEm DateTime       @updatedAt
+  criadoEm                       DateTime       @default(now())
+  atualizadoEm                   DateTime       @updatedAt
 
   transacao Transacao?
 
@@ -330,6 +351,8 @@ model Transacao {
   valor      Decimal  @db.Decimal(10, 2)
   metodo     String
   criadoEm   DateTime @default(now())
+
+  comissaoIndicacao ComissaoIndicacao?
 
   @@map("transacoes")
 }
@@ -374,19 +397,102 @@ model AuditLog {
 
 /// Divisão dos 12% de taxa de serviço entre NOVYX e organizador — ver docs/architecture/09-modelo-financeiro.md.
 model AcordoComercial {
-  id                    String                 @id @default(uuid())
+  id                    String                @id @default(uuid())
   organizadorId         String
-  organizador           Usuario                @relation("AcordoComercialOrganizador", fields: [organizadorId], references: [id])
+  organizador           Usuario               @relation("AcordoComercialOrganizador", fields: [organizadorId], references: [id])
   eventoId              String?
-  evento                Evento?                @relation(fields: [eventoId], references: [id])
-  percentualNovyx       Decimal                @db.Decimal(5, 2)
-  percentualOrganizador Decimal                @db.Decimal(5, 2)
+  evento                Evento?               @relation(fields: [eventoId], references: [id])
+  percentualNovyx       Decimal               @db.Decimal(5, 2)
+  percentualOrganizador Decimal               @db.Decimal(5, 2)
   escopo                EscopoAcordoComercial
   eventosRestantes      Int?
-  ativo                 Boolean                @default(true)
+  ativo                 Boolean               @default(true)
   definidoPorAdminId    String
-  definidoPorAdmin      Usuario                @relation("AcordoComercialAdmin", fields: [definidoPorAdminId], references: [id])
-  criadoEm              DateTime               @default(now())
+  definidoPorAdmin      Usuario               @relation("AcordoComercialAdmin", fields: [definidoPorAdminId], references: [id])
+  criadoEm              DateTime              @default(now())
 
   @@map("acordos_comerciais")
+}
+
+/// Programa de indicação de um usuário. A conta é própria do indicador (não pertence a evento)
+/// e usa a mesma criptografia AES-256-GCM das contas bancárias de evento.
+model ProgramaIndicacao {
+  id               String            @id @default(uuid())
+  usuarioId        String            @unique
+  usuario          Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  banco            String
+  agencia          String
+  conta            String
+  tipoConta        TipoContaBancaria
+  titular          String
+  documentoTitular String
+  ativo            Boolean           @default(true)
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  ofertas OfertaIndicacao[]
+
+  @@map("programas_indicacao")
+}
+
+/// Cada oferta gera um link próprio e guarda a porcentagem vitalícia negociada para o organizador
+/// indicado (0% a 2%). Um indicador pode criar ofertas/links ilimitados.
+model OfertaIndicacao {
+  id                             String            @id @default(uuid())
+  programaId                     String
+  programa                       ProgramaIndicacao @relation(fields: [programaId], references: [id], onDelete: Cascade)
+  codigo                         String            @unique
+  percentualBeneficioOrganizador Decimal           @db.Decimal(4, 2)
+  ativo                          Boolean           @default(true)
+  criadoEm                       DateTime          @default(now())
+
+  indicacoes Indicacao[]
+
+  @@index([programaId])
+  @@map("ofertas_indicacao")
+}
+
+/// Relação vitalícia: cada conta indicada só pode ter um indicador, enquanto o indicador pode
+/// trazer organizadores ilimitados. O percentual é copiado da oferta para manter o acordo imutável.
+model Indicacao {
+  id                             String          @id @default(uuid())
+  indicadorId                    String
+  indicador                      Usuario         @relation("IndicadorIndicacao", fields: [indicadorId], references: [id], onDelete: Restrict)
+  indicadoId                     String          @unique
+  indicado                       Usuario         @relation("IndicadoIndicacao", fields: [indicadoId], references: [id], onDelete: Restrict)
+  ofertaId                       String
+  oferta                         OfertaIndicacao @relation(fields: [ofertaId], references: [id], onDelete: Restrict)
+  percentualBeneficioOrganizador Decimal         @db.Decimal(4, 2)
+  primeiroEventoPagoId           String?         @unique
+  primeiroEventoPago             Evento?         @relation("PrimeiroEventoPagoIndicacao", fields: [primeiroEventoPagoId], references: [id], onDelete: SetNull)
+  criadoEm                       DateTime        @default(now())
+
+  comissoes ComissaoIndicacao[]
+
+  @@index([indicadorId])
+  @@map("indicacoes")
+}
+
+/// Ledger da comissão por transação confirmada. Enquanto não existe checkout, o painel calcula
+/// estimativas sem criar linhas aqui; pagamentos reais futuros serão append-only e idempotentes.
+model ComissaoIndicacao {
+  id                String                  @id @default(uuid())
+  indicacaoId       String
+  indicacao         Indicacao               @relation(fields: [indicacaoId], references: [id], onDelete: Restrict)
+  eventoId          String
+  evento            Evento                  @relation(fields: [eventoId], references: [id], onDelete: Restrict)
+  transacaoId       String?                 @unique
+  transacao         Transacao?              @relation(fields: [transacaoId], references: [id], onDelete: Restrict)
+  percentualBase    Decimal                 @db.Decimal(4, 2)
+  percentualBonus   Decimal                 @db.Decimal(4, 2)
+  baseCalculo       Decimal                 @db.Decimal(12, 2)
+  valor             Decimal                 @db.Decimal(12, 2)
+  status            StatusComissaoIndicacao @default(estimada)
+  chaveIdempotencia String                  @unique
+  criadoEm          DateTime                @default(now())
+  atualizadoEm      DateTime                @updatedAt
+
+  @@index([indicacaoId, status])
+  @@index([eventoId])
+  @@map("comissoes_indicacao")
 }

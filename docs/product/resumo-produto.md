@@ -62,8 +62,8 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 
 ### 3.8 Painel do admin geral do sistema (NOVYX)
 - Tela separada da administração do evento — é o **superadmin da plataforma como um todo**
-- Liga/desliga features do sistema (feature flags): ex: desativar temporariamente a geração de parciais por e-mail, ou lançar uma feature nova só para eventos selecionados
-- Configuração comercial (split de taxa de serviço por organizador — ver [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md))
+- Liga/desliga features do sistema (feature flags): expansão futura; o modelo existe, mas essa parte ainda não tem UI
+- Configuração comercial já implementada: parcela da taxa para o organizador para sempre, nos próximos X eventos pagos ou em evento específico, limitada automaticamente pelo programa de indicação — ver [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md)
 - Também é onde, no futuro, dá pra colocar: monitoramento de uso, saúde do sistema, gestão de todos os eventos/organizadores cadastrados
 
 ### 3.9 Política de cancelamento e página de Políticas
@@ -79,6 +79,15 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 - Regra de negócio registrada, não implementada: o organizador cria um lote marcado como especial/privado, e um cupom especial vinculado protegido por senha — o comprador digita a senha num popup para desbloquear a compra desses ingressos
 - Detalhes em [docs/architecture/04-modelo-de-dados.md](../architecture/04-modelo-de-dados.md) e [docs/architecture/11-roadmap.md](../architecture/11-roadmap.md)
 
+### 3.12 Programa de indicação e negociação com organizadores
+- Qualquer usuário pode cadastrar uma conta de recebimento, criar links ilimitados e indicar organizadores ilimitados
+- Cada link negocia um benefício permanente de **0% a 2%** da taxa para o novo organizador
+- O indicador recebe **1% no primeiro evento pago** e **0,25% nos seguintes, para sempre**; evento gratuito não conta
+- O indicador recebe também 25% da parcela dos 2% que não concedeu ao organizador. Exemplo: concedeu 1%, então ganha bônus de 0,25%
+- O vínculo é criado no registro, aceita apenas um indicador original por conta e mantém o percentual da oferta daquele momento
+- O acordo concedido pelo ADMIN é independente e cumulativo. O motor central impede que a soma ultrapasse os 12% da taxa
+- Cadastro, links, painel e estimativas já estão implementados; pagamento real aguarda checkout/gateway. Regra completa em [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md)
+
 ---
 
 ## 4. Entidades principais (visão de dados, alto nível)
@@ -89,6 +98,7 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 - **Link de venda** → rastreia origem da venda, usado para gerar parcial segmentada
 - **Usuário** → pode ser Organizador, Gestor, View, Operador de check-in, ou Admin geral
 - **Transação** → registro de pagamento (ou gratuidade) vinculado a um Ingresso
+- **Programa/Oferta/Indicação/Comissão** → conta do indicador, negociação por link, vínculo permanente com o indicado e ledger futuro por transação
 
 Modelo de dados completo (com RBAC por evento, split financeiro e auditoria) em [docs/architecture/04-modelo-de-dados.md](../architecture/04-modelo-de-dados.md).
 

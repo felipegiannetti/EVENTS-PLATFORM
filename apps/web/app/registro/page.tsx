@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { validarCpf, validarCnpj, type TipoPessoa } from "@events-platform/shared-types";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Gift } from "lucide-react";
+import { validarCpf, validarCnpj, type OfertaIndicacaoPublicaResponse, type TipoPessoa } from "@events-platform/shared-types";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationLoading } from "@/lib/navigation-loading";
 import { ApiError } from "@/lib/api-client";
@@ -12,11 +13,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { AuthShell } from "@/components/auth-shell";
+import { buscarOfertaIndicacao } from "@/lib/referrals-client";
 
 export default function RegistroPage() {
+  return (
+    <Suspense fallback={<div className="page-shell"><div className="h-64 animate-pulse rounded-3xl bg-card" /></div>}>
+      <FormularioRegistro />
+    </Suspense>
+  );
+}
+
+function FormularioRegistro() {
   const { registrar } = useAuth();
   const { iniciar } = useNavigationLoading();
   const router = useRouter();
+  const codigoIndicacao = useSearchParams().get("ref") ?? undefined;
+  const [ofertaIndicacao, setOfertaIndicacao] = useState<OfertaIndicacaoPublicaResponse | null>(null);
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa>("fisica");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +40,11 @@ export default function RegistroPage() {
   const [erroDocumento, setErroDocumento] = useState<string | null>(null);
   const [erroConfirmarSenha, setErroConfirmarSenha] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!codigoIndicacao) return;
+    buscarOfertaIndicacao(codigoIndicacao).then(setOfertaIndicacao).catch(() => setOfertaIndicacao(null));
+  }, [codigoIndicacao]);
 
   function onDocumentoChange(valor: string) {
     setDocumento(formatarDocumento(valor, tipoPessoa));
@@ -63,6 +80,7 @@ export default function RegistroPage() {
         tipoPessoa,
         documento,
         dataNascimento: tipoPessoa === "fisica" ? dataNascimento : undefined,
+        codigoIndicacao,
       });
       router.push("/");
     } catch (err) {
@@ -74,6 +92,16 @@ export default function RegistroPage() {
   return (
     <AuthShell title="Crie sua conta" description="Comece a criar experiências memoráveis em poucos minutos.">
       <Card className="p-7 sm:p-8">
+        {codigoIndicacao && (
+          <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <p className="flex items-center gap-2 text-sm font-bold text-primary"><Gift size={16} /> Convite de indicação ativo</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              {ofertaIndicacao
+                ? `${ofertaIndicacao.indicadorNome} convidou você. Ao organizar eventos pagos, você receberá permanentemente ${ofertaIndicacao.percentualBeneficioOrganizador.toFixed(2)}% adicional da taxa da plataforma.`
+                : "Validaremos este convite ao criar sua conta."}
+            </p>
+          </div>
+        )}
         <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-border/15 bg-background/60 p-1">
           {(["fisica", "juridica"] as const).map((tipo) => (
             <button

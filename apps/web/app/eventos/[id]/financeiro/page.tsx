@@ -61,14 +61,47 @@ function Financeiro({ token }: { token: string }) {
             <Stat
               label="Venda líquida"
               value={formatarReais(resumo.vendaLiquida)}
-              ajuda={`A plataforma retém ${resumo.percentualTaxaServico}% de taxa de serviço, fixo. ${
-                resumo.percentualDevolvidoAoOrganizador > 0
-                  ? `Um acordo comercial devolve ${resumo.percentualDevolvidoAoOrganizador} ponto(s) percentual(is) pro seu repasse — já refletido aqui.`
-                  : "Não há acordo comercial ativo pra esse evento, então a taxa cheia é retida."
-              } Por isso venda líquida é sempre menor que vendas brutas. Ainda não é dinheiro de verdade — só existe quando o checkout com gateway de pagamento estiver integrado (ingressos cancelados já descontados dos dois valores).`}
+              ajuda={`Estimativa do repasse do organizador depois da distribuição da taxa de ${resumo.percentualTaxaServico}%. Acordo administrativo, benefício de indicação, comissão do indicador e parcela da plataforma já estão refletidos. Ainda não é saldo real: depende do checkout e do gateway.`}
             />
             <Stat label="Ticket médio" value={formatarReais(resumo.ticketMedioBruto)} />
             <Stat label="Ingressos válidos" value={String(resumo.ingressosValidos)} />
+          </Card>
+
+          <Card className="mt-5 overflow-hidden p-0">
+            <div className="border-b border-border/10 bg-gradient-to-r from-primary/10 to-blue-500/5 px-6 py-5">
+              <p className="eyebrow">Composição da taxa</p>
+              <h2 className="mt-2 text-lg font-bold tracking-tight">Como os 12% estão distribuídos</h2>
+              <p className="mt-1 text-xs text-muted">A soma das parcelas nunca ultrapassa a taxa cobrada.</p>
+            </div>
+            <div className="grid gap-px bg-border/10 sm:grid-cols-2 lg:grid-cols-4">
+              <ParcelaTaxa
+                label="Acordo do ADMIN"
+                percentual={resumo.percentualDevolvidoAoOrganizador}
+                descricao="Retorna ao organizador"
+              />
+              <ParcelaTaxa
+                label="Benefício da indicação"
+                percentual={resumo.percentualBeneficioIndicacaoOrganizador}
+                descricao="Permanente para o organizador"
+              />
+              <ParcelaTaxa
+                label="Indicador"
+                percentual={resumo.percentualTotalIndicador}
+                descricao={`${resumo.percentualIndicadorBase.toFixed(2)}% base + ${resumo.percentualBonusIndicador.toFixed(2)}% bônus`}
+              />
+              <ParcelaTaxa
+                label="Plataforma"
+                percentual={resumo.percentualLiquidoPlataforma}
+                descricao="Parcela líquida residual"
+                destaque
+              />
+            </div>
+            {(resumo.valorEstimadoIndicador > 0 || resumo.valorBeneficioIndicacaoOrganizador > 0) && (
+              <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border/10 px-6 py-4 text-xs text-muted">
+                <span>Estimativa do indicador: <strong className="text-foreground">{formatarReais(resumo.valorEstimadoIndicador)}</strong></span>
+                <span>Benefício do organizador por indicação: <strong className="text-foreground">{formatarReais(resumo.valorBeneficioIndicacaoOrganizador)}</strong></span>
+              </div>
+            )}
           </Card>
 
           <Card className="mt-5 border-warning/20 bg-warning/5">
@@ -108,5 +141,15 @@ function Financeiro({ token }: { token: string }) {
         )}
       </Card>
     </main>
+  );
+}
+
+function ParcelaTaxa({ label, percentual, descricao, destaque = false }: { label: string; percentual: number; descricao: string; destaque?: boolean }) {
+  return (
+    <div className="bg-card px-5 py-5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight ${destaque ? "text-primary" : "text-foreground"}`}>{percentual.toFixed(2)}%</p>
+      <p className="mt-1 text-xs text-muted">{descricao}</p>
+    </div>
   );
 }

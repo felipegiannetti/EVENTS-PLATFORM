@@ -40,6 +40,7 @@ export function Header() {
   const navLogado = [
     { href: "/eventos", label: "Espaço do organizador" },
     { href: "/meus-ingressos", label: "Meus ingressos" },
+    { href: "/indicacoes", label: "Indique e ganhe" },
   ];
 
   // Navbar completa sempre — logado só ganha itens extras (ex: "Espaço do organizador"), não perde os públicos.

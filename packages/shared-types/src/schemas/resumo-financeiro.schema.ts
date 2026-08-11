@@ -23,6 +23,13 @@ export const resumoFinanceiroEventoSchema = z.object({
   ingressosCancelados: z.number().int(),
   percentualTaxaServico: z.number(),
   percentualDevolvidoAoOrganizador: z.number(),
+  percentualBeneficioIndicacaoOrganizador: z.number(),
+  percentualIndicadorBase: z.number(),
+  percentualBonusIndicador: z.number(),
+  percentualTotalIndicador: z.number(),
+  percentualLiquidoPlataforma: z.number(),
+  valorEstimadoIndicador: z.number(),
+  valorBeneficioIndicacaoOrganizador: z.number(),
   taxaPagaPor: z.enum(TAXA_PAGA_POR),
 });
 export type ResumoFinanceiroEvento = z.infer<typeof resumoFinanceiroEventoSchema>;

@@ -30,7 +30,7 @@ Segue o padrão descrito em [docs/architecture/03-modulos-backend.md](../archite
 
 | Rota | Descrição |
 |---|---|
-| `POST /auth/register` | Cria usuário (senha com argon2id) e já retorna sessão logada (auto-login). Pede `tipoPessoa` (`fisica`/`juridica`), `documento` (CPF ou CNPJ — único no banco, validado por dígito verificador real via `validarCpf`/`validarCnpj`, não só tamanho) e `dataNascimento` (obrigatória só pra pessoa física). Não existe coluna separada de razão social — pessoa jurídica usa o mesmo campo `nome` |
+| `POST /auth/register` | Cria usuário (senha com argon2id) e já retorna sessão logada (auto-login). Pede `tipoPessoa` (`fisica`/`juridica`), `documento` e `dataNascimento` quando PF. Aceita `codigoIndicacao` opcional: valida uma oferta ativa e cria na mesma transação o vínculo permanente com indicador e snapshot do benefício negociado |
 | `POST /auth/login` | Valida email/senha (rate limit: 5/min), retorna access + refresh token |
 | `POST /auth/refresh` | Rotaciona o refresh token (janela deslizante de 90 dias); reuso de token já revogado derruba toda a sessão |
 | `POST /auth/logout` | Revoga o refresh token atual |
@@ -38,7 +38,7 @@ Segue o padrão descrito em [docs/architecture/03-modulos-backend.md](../archite
 | `PATCH /auth/me` | Atualiza dados de perfil (nome etc. — via `AtualizarPerfilDto`) |
 | `PATCH /auth/me/email` | Troca o email da conta; exige `senhaAtual` no corpo pra confirmar |
 | `PATCH /auth/me/senha` | Troca a senha; exige `senhaAtual` + `novaSenha` |
-| `DELETE /auth/me` | Deleta a própria conta (exige `senhaAtual`); bloqueada se o usuário for `owner` de algum evento (`ContaComEventosException`) — evita apagar a conta e deixar eventos órfãos |
+| `DELETE /auth/me` | Deleta a própria conta (exige `senhaAtual`); bloqueada se o usuário for `owner` de evento ou participar do programa de indicação como indicador/indicado — evita eventos órfãos e quebra de histórico financeiro |
 
 Rotas `/auth/me*` ficam em `apps/web/app/perfil/page.tsx` (editar perfil, trocar email/senha, apagar conta).
 
@@ -75,7 +75,26 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 | Rota | Papel mínimo | Descrição |
 |---|---|---|
 | `GET /events/:id/conta-bancaria`, `PUT .../conta-bancaria` | owner | Conta de repasse — **por evento, não por organizador** (o mesmo organizador pode ter eventos com repasses diferentes). `banco` é um código Febraban de uma lista curada (`BANCOS_BRASIL` em shared-types), não texto livre — elimina banco inexistente por digitação. `documentoTitular` aceita CPF ou CNPJ, validado por dígito verificador real (`validarCpfOuCnpj`), não só tamanho. Os campos sensíveis (agência, conta, titular, documento) são **criptografados em repouso** (AES-256-GCM, `apps/api/src/infra/crypto/campo-criptografado.util.ts`, chave em `CONTA_BANCARIA_ENCRYPTION_KEY`) — ver [06-seguranca.md](../architecture/06-seguranca.md). **O que não dá pra validar sem gateway real**: se a agência+conta específica existe de fato — isso só é possível quando o Asaas entrar na fatia de checkout (ele valida ao criar a subconta) |
-| `GET /events/:id/financeiro/resumo` | view+ | Resumo financeiro calculado direto de `Ingresso`+`Lote` (preço × ingressos não cancelados), sem passar por Model/Repository (é leitura agregada, não uma entidade). Retorna `vendasBrutas`, `vendaLiquida`, `ticketMedioBruto`, `ingressosValidos`, `ingressosCancelados`, `percentualTaxaServico` (sempre 12), `percentualDevolvidoAoOrganizador` (do `AcordoComercial` ativo daquele organizador/evento, ou `0` se não houver nenhum) e `taxaPagaPor`. Segue exatamente o modelo de [09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md): a taxa de 12% é fixa, o acordo só redistribui essa mesma fatia entre NOVYX e organizador (nunca aumenta o total cobrado), e `vendasBrutas` já inclui o acréscimo pago pelo comprador quando `taxaPagaPor: "comprador"`. **De propósito não tem** "em processamento"/"total a receber"/"total recebido" — isso só existe quando há um gateway de pagamento real; mostrar um número ali seria inventar dado. Não existe hoje nenhum endpoint para cadastrar um `AcordoComercial` — só leitura (ver [11-roadmap.md](../architecture/11-roadmap.md)) |
+| `GET /events/:id/financeiro/resumo` | view+ | Resumo calculado de ingressos não cancelados. Além de vendas e ticket médio, devolve a decomposição dos 12%: acordo ADMIN, benefício referral do organizador, base e bônus do indicador, total do indicador e residual da plataforma. `DistribuicaoTaxaService` é a fonte única dessa regra. **De propósito não tem** saldo processado/recebido: sem gateway, tudo é estimativa |
+
+### Referrals (`apps/api/src/referrals/`)
+
+| Rota | Acesso | Descrição |
+|---|---|---|
+| `GET /referrals/ofertas/:codigo` | público | Preview seguro do convite: primeiro nome do indicador e benefício permanente do organizador; usado no cadastro |
+| `GET /referrals/me` | autenticado | Painel com programa, ofertas, total de indicados e comissões estimadas por evento pago |
+| `POST /referrals/me` | autenticado | Ativa o programa após confirmar `senhaAtual`; criptografa a conta de recebimento com AES-256-GCM |
+| `POST /referrals/me/ofertas` | autenticado | Cria oferta/link ilimitado com benefício negociado entre 0% e 2% para o organizador |
+
+### Admin (`apps/api/src/admin/`)
+
+Todas as rotas exigem `papelGlobal: admin_geral` por `RolesGuard`.
+
+| Rota | Descrição |
+|---|---|
+| `GET /admin/organizadores` | Lista organizadores pelo vínculo estável `Evento.organizadorId`, seus eventos, indicação e histórico de acordos |
+| `POST /admin/acordos` | Cria acordo para sempre, próximos N eventos pagos ou evento específico. Desativa o acordo ativo anterior e rejeita percentual acima do espaço disponível nos 12% |
+| `PATCH /admin/acordos/:id/desativar` | Desativa um acordo sem apagar o histórico; criação e desativação geram `AuditLog` |
 
 ### Tickets (`apps/api/src/tickets/`)
 
@@ -123,13 +142,15 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 
 | Rota | Descrição |
 |---|---|
-| `/login`, `/registro` | Autenticação — usam `lib/auth-context.tsx`, que guarda o access token só em memória e faz refresh silencioso (cookie `httpOnly`) ao montar. `/registro` alterna Pessoa física/jurídica (campos condicionais: CPF+nascimento vs. CNPJ), com validação de documento no blur do campo |
+| `/login`, `/registro` | Autenticação — usam `lib/auth-context.tsx`, que guarda o access token só em memória e faz refresh silencioso. `/registro` aceita `?ref=CODIGO`, exibe a negociação do convite e envia o código na criação atômica da conta |
 | `/status` | Health check da API (esqueleto original da fatia 1) |
 | `/eventos/todos` | Catálogo público com busca por nome/localização, filtros de categoria, cidade/estado/país (via `LocationFilterModal`, estilo Sympla) e data exata, além de ordenação |
 | `/eventos` | Lista os eventos do usuário logado |
 | `/eventos/novo` | Assistente de criação — só a etapa 1 (dados do evento) vive nesta rota; ao submeter mostra um popup perguntando "Compradores já podem ver esse evento?" e cria o evento **por completo** via `POST /events`, seguindo pra `/eventos/[id]/conta-repasse?wizard=1` |
 | `/meus-ingressos` | Lista os ingressos do usuário logado entre eventos (`GET /tickets/meus`), com toggle Próximos/Passados. Quando há transferências pendentes de outra pessoa (`GET /tickets/recebidas`), mostra uma seção "Transferências recebidas" no topo com botões Aceitar/Recusar por item, sem precisar abrir o modal. Clicar num ingresso próprio abre `TicketQrModal` (`components/ticket-qr-modal.tsx`) — bottom sheet com animação de baixo para cima mostrando nome do evento, código da compra (`ingresso.id`), nome, email, data de compra (`criadoEm`) e o QR code (gerado client-side com `qrcode` a partir do mesmo `qrToken` assinado que o check-in valida), com o código repetido como legenda logo abaixo do QR. **Transferir** passa por duas telas — inserir o email do destinatário, depois um popup dedicado de "Confirmar transferência" (mostra pra quem vai e o aviso de que fica bloqueado até aceite) — antes de chamar a API; a tela de sucesso deixa claro que é "Transferência enviada" (pendente), não "transferido". Enquanto `status === "aguardando_aceite"`, o modal mostra o QR bloqueado (esmaecido) e o menu troca as opções normais (Transferir/Cancelar) por uma única opção "Cancelar transferência" |
 | `/perfil` | Editar perfil, trocar email/senha, apagar conta (`/auth/me*`) |
+| `/indicacoes` | Ativação do programa e conta de recebimento, criação de ofertas ilimitadas, preview das porcentagens, cópia de links e painel moderno de comissões estimadas |
+| `/admin` | Área exclusiva do admin geral para escolher organizador, visualizar impacto do referral, configurar o acordo comercial e consultar/desativar o histórico |
 
 **Painel do evento (`/eventos/[id]/*`)**: a partir do momento que o evento existe, todas as rotas abaixo de `/eventos/[id]` vivem dentro do **workspace do evento** — sidebar própria e escura (`EventWorkspaceSidebar`, `apps/web/components/event-workspace-sidebar.tsx`), sem a navbar/rodapé geral do site (`Header`/`Footer` se escondem via `useIsEventWorkspace`, `apps/web/lib/event-workspace.ts`). A sidebar agrupa as telas em: **Painel do evento** (Visão geral, Quem tem acesso, Configurações), **Ingressos** (Lotes e ingressos, Cupons de desconto), **Participantes**, **Check-in**, **Financeiro**.
 
@@ -142,7 +163,7 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 | `/eventos/[id]/cupons` | **Cupons de desconto** — cria (com opção de limitar a X usos, ou deixar ilimitado por padrão) e edita por completo (`ModalEditarCupom`: código, tipo, valor, limite de usos, ativo — rejeita salvar se o novo limite for menor que os usos já registrados); ativar/desativar e excluir sempre exigem popup de confirmação, e excluir é bloqueado com aviso se o cupom já tiver alguma emissão vinculada (`usos > 0`); mostra `usos/limiteUsos` quando há limite, ou só a contagem quando ilimitado; busca por código + paginação de 20/página (`components/ui/pagination.tsx`); botão "copiar link" gera a URL pública do evento já com `?cupom=CODIGO` pré-preenchido (`urlPublicaEvento`) |
 | `/eventos/[id]/participantes` | **Participantes** — uma linha por ingresso emitido (status, participante, email, tipo, data), com ícone (visível só no hover) indicando qual cupom foi usado na compra quando houver um vinculado; ações **Reenviar** (email), **Editar** (dados do comprador, modal), e **Cancelar** — ícone de X que abre popup de confirmação antes de chamar a API; busca por nome/email + paginação de 20/página; botões pra exportar CSV e enviar email em massa aos compradores |
 | `/eventos/[id]/checkin` | **Check-in via scanner** — campo de leitura (funciona com leitor USB, que se comporta como teclado) ou câmera do dispositivo (decodificação client-side via `jsQR`, não a `BarcodeDetector` nativa — que não existe no Safari/iOS); **valida automaticamente assim que o valor lido bate com o formato completo de `qrToken`** (regex `uuid.nonce.hmac`), sem precisar clicar em "Validar" — pensado pra leitor USB que já "digita e dá enter" sozinho; lista de leituras recentes com nome do participante e horário, com busca + paginação de 20/página (até 500 leituras guardadas em memória por sessão de check-in) |
-| `/eventos/[id]/financeiro` | **Financeiro** — as mesmas métricas do mini painel + explicação textual de como a taxa/acordo comercial afeta os números daquele evento + detalhe/edição da conta de repasse + aviso de que "em processamento/a receber/recebido" ainda não existe (depende do checkout) |
+| `/eventos/[id]/financeiro` | **Financeiro** — métricas e card de composição dos 12%, separando acordo ADMIN, benefício de indicação do organizador, base+bônus do indicador e residual da plataforma; conta de repasse e aviso explícito de que os valores ainda são estimados |
 | `/eventos/[id]/conta-repasse` | Cadastro/edição da conta de repasse. Não aparece na sidebar — acessada pelo link "Cadastrar"/"Editar" na tela Financeiro |
 
 **Assistente de criação (`?wizard=1`)**: as rotas `conta-repasse`, `acesso` e `detalhes` são compartilhadas entre o assistente de criação e o workspace permanente do evento — a mesma página muda de comportamento conforme a query string `?wizard=1` (`useIsEventWorkspace`, que suprime a sidebar/navbar nesse modo). No fluxo do assistente: `/eventos/novo` (dados do evento, sem `id` ainda) → `/eventos/[id]/conta-repasse?wizard=1` (**Etapa 2 de 4**) → `/eventos/[id]/acesso?wizard=1` (**Etapa 3 de 4**) → `/eventos/[id]/detalhes?wizard=1` (**Etapa 4 de 4**, totalmente opcional). Só a etapa 1 é obrigatória para o evento existir — as etapas 2–4 sempre têm um jeito de pular ("Cadastrar depois" / "Pular por enquanto" / "Concluir depois") que leva direto pro painel do evento (`/eventos/[id]`, sem a query string), e os mesmos formulários continuam acessíveis por lá a qualquer momento como telas normais do workspace (sem "Etapa N de 4" no `.eyebrow`, com o rótulo da própria tela — "Financeiro", "Equipe", "Configurações").

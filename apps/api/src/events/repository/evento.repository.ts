@@ -4,6 +4,7 @@ import type { EventoModel } from "../model/evento.model";
 export const EVENTO_REPOSITORY = Symbol("EVENTO_REPOSITORY");
 
 export interface CriarEventoData {
+  organizadorId: string;
   nome: string;
   data: Date;
   dataFim?: Date;
@@ -27,7 +28,7 @@ export interface CriarEventoData {
   contatoTelefone?: string;
 }
 
-export type AtualizarEventoData = Partial<CriarEventoData>;
+export type AtualizarEventoData = Partial<Omit<CriarEventoData, "organizadorId">>;
 
 export interface BannerEvento {
   bytes: Buffer;

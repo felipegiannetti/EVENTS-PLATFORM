@@ -56,6 +56,7 @@ export class EventsService {
 
   async criarEvento(usuarioId: string, input: CriarEventoInput): Promise<EventoModel> {
     const evento = await this.eventoRepository.criar({
+      organizadorId: usuarioId,
       nome: input.nome,
       data: new Date(input.data),
       dataFim: input.dataFim ? new Date(input.dataFim) : undefined,

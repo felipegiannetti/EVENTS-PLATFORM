@@ -11,12 +11,30 @@ export function listarMeusIngressos(token: string) {
   return apiFetch<MeuIngressoResponse[]>("/tickets/meus", {}, token);
 }
 
+/** Só inicia a transferência — o ingresso vai pra "aguardando_aceite", ainda não muda de dono. */
 export function transferirIngresso(ticketId: string, destinatarioEmail: string, token: string) {
-  return apiFetch<{ transferido: true }>(
+  return apiFetch<{ iniciada: true }>(
     `/tickets/${ticketId}/transferir`,
     { method: "POST", body: JSON.stringify({ destinatarioEmail }) },
     token,
   );
+}
+
+/** Remetente desiste antes do aceite — o ingresso volta pra carteira de quem enviou. */
+export function cancelarTransferenciaIngresso(ticketId: string, token: string) {
+  return apiFetch<{ cancelada: true }>(`/tickets/${ticketId}/transferir/cancelar`, { method: "POST" }, token);
+}
+
+export function listarTransferenciasRecebidas(token: string) {
+  return apiFetch<MeuIngressoResponse[]>("/tickets/recebidas", {}, token);
+}
+
+export function aceitarTransferenciaIngresso(ticketId: string, token: string) {
+  return apiFetch<IngressoResponse>(`/tickets/${ticketId}/aceitar`, { method: "POST" }, token);
+}
+
+export function recusarTransferenciaIngresso(ticketId: string, token: string) {
+  return apiFetch<{ recusada: true }>(`/tickets/${ticketId}/recusar`, { method: "POST" }, token);
 }
 
 /** Cancelamento self-service (o próprio comprador cancela o próprio ingresso) — diferente do cancelamento feito pelo organizador em /events/:id/ingressos/:ticketId/status. */

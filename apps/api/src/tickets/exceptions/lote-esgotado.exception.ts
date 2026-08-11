@@ -6,6 +6,8 @@ export class LoteEsgotadoException extends DomainException {
   readonly code = "LOTE_ESGOTADO";
 
   constructor() {
-    super("Este lote não tem mais ingressos disponíveis.");
+    super(
+      "Este lote não tem mais ingressos disponíveis — pode ser que a última vaga tenha acabado de ser ocupada por outra pessoa. Tente novamente ou escolha outro lote.",
+    );
   }
 }

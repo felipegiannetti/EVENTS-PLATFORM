@@ -20,6 +20,7 @@ export class MeuIngressoModel extends IngressoModel {
       ingresso.compradorNome,
       ingresso.compradorEmail,
       ingresso.compradorDocumento,
+      ingresso.destinatarioTransferenciaEmail,
       ingresso.cupomDescontoId,
       ingresso.cupomCodigo,
       ingresso.criadoEm,

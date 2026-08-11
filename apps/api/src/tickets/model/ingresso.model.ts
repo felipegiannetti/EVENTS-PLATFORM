@@ -13,6 +13,7 @@ export class IngressoModel {
     public readonly compradorNome: string | null,
     public readonly compradorEmail: string | null,
     public readonly compradorDocumento: string | null,
+    public readonly destinatarioTransferenciaEmail: string | null,
     public readonly cupomDescontoId: string | null,
     public readonly cupomCodigo: string | null,
     public readonly criadoEm: Date,

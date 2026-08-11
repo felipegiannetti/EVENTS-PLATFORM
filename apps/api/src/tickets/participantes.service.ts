@@ -13,6 +13,7 @@ const ROTULO_STATUS: Record<StatusIngresso, string> = {
   valido: "Aprovado",
   usado: "Check-in feito",
   cancelado: "Cancelado",
+  aguardando_aceite: "Aguardando aceite da transferência",
 };
 
 @Injectable()

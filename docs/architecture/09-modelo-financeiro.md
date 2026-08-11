@@ -28,6 +28,21 @@ O que **não** está implementado: o checkout/gateway de pagamento (Asaas) descr
 
 Registrado como regra de negócio futura em [12-pagamentos-e-repasses.md#43](12-pagamentos-e-repasses.md#43-ingresso-com-cancelamento-flexível--produto-pago-10-revertido-só-à-plataforma): um ingresso com opção de cancelamento flexível cobra um adicional de 10% sobre ingresso+taxa que fica **inteiro com a plataforma**, sem passar pelo `AcordoComercial` nem pelo split de 12% descrito acima — é um valor conceitualmente separado da taxa de serviço, não implementado ainda (depende de checkout self-service).
 
+## Programa de indicação (referral) — ideia registrada, não implementada
+
+Ideia de crescimento por indicação, ainda **não implementada** (só documentada aqui para não se perder — depende do checkout self-service, igual ao resto deste documento):
+
+- Qualquer usuário cadastrado (não precisa ser organizador) pode gerar seu próprio **link de indicação**. Não há limite de quantos organizadores um usuário pode indicar através dele.
+- Ao criar o link de indicação pela primeira vez, o usuário indicador cadastra sua **conta de repasse** (mesmo fluxo que o organizador já usa hoje — ver seção acima) — é para essa conta que os valores de indicação são enviados.
+- Quando um novo organizador se cadastra usando o link de alguém, essa relação **indicador ↔ organizador indicado** fica registrada permanentemente (o organizador só pode ter sido indicado por uma pessoa, mas um indicador pode indicar quantos organizadores quiser).
+- Sempre que o organizador indicado realizar um **evento pago** (eventos gratuitos — sem cobrança de ingresso — não contam para isso), o indicador recebe uma fatia fixa da taxa de 12% que a NOVYX reteria:
+  - **1%** no primeiro evento pago do organizador indicado.
+  - **0,25%** em todos os eventos pagos seguintes desse organizador, **para sempre** (não expira).
+- Esse repasse ao indicador reduz apenas a fatia que ficaria com a **NOVYX**, nunca a fatia do organizador indicado. Exemplo sem nenhum `AcordoComercial` ativo: no primeiro evento pago do indicado, a NOVYX fica com 11% e o indicador com 1%; nos eventos seguintes, 11,75%/0,25%.
+- **Interação com `AcordoComercial` não decidida ainda**: os dois mecanismos dividem a mesma fatia de 12% que caberia à NOVYX (um por acordo comercial com o organizador, outro por indicação) — se são cumulativos, e em que ordem se aplicam quando os dois existem ao mesmo tempo para o mesmo organizador, precisa ser definido quando isso for desenhado de verdade.
+- O admin geral da plataforma já pode configurar (via `AcordoComercial`) que organizadores recebam parte da taxa — esse mecanismo de indicação é independente disso, layer adicional sobre o mesmo split de 12%.
+- Peças que faltariam construir: uma entidade nova (ex.: `Indicacao`) ligando indicador ↔ organizador indicado com um código/link único por usuário; um jeito de saber se um evento é o "primeiro evento pago" do organizador indicado (pra aplicar 1% vs 0,25%); e inclusão automática da conta de repasse do indicador como um terceiro destino no split do checkout — tudo isso depende do checkout self-service via Asaas (seção acima), que ainda não existe.
+
 ## Ponto de atenção tributário
 
 **Validar com contador/advogado tributário antes do lançamento — isso não é uma decisão de arquitetura.** O racional de mercado é que, ao usar split real na liquidação (o dinheiro nunca "entra" inteiro na conta da NOVYX), cada parte tributa apenas o que efetivamente recebe — o organizador tributa a receita do ingresso, a NOVYX tributa só a taxa de serviço — evitando a bitributação que ocorreria se 100% do valor passasse pela conta da NOVYX antes do repasse manual. Isso também é relevante porque a Reforma Tributária brasileira (IBS/CBS) está introduzindo seu próprio mecanismo de "split payment" para tributos no pagamento eletrônico, com cronograma de transição já em andamento em 2026 — vale acompanhar isso com o time contábil ao definir a integração fiscal final.

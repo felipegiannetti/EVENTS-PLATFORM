@@ -30,6 +30,8 @@ export const ingressoResponseSchema = z.object({
   compradorNome: z.string().nullable(),
   compradorEmail: z.string().nullable(),
   compradorDocumento: z.string().nullable(),
+  /** Preenchido só quando status='aguardando_aceite' — o email de quem precisa aceitar a transferência. */
+  destinatarioTransferenciaEmail: z.string().nullable(),
   /** Código do cupom usado nesta emissão (join com CupomDesconto), ou null se nenhum foi usado. */
   cupomCodigo: z.string().nullable(),
   criadoEm: z.string().datetime(),

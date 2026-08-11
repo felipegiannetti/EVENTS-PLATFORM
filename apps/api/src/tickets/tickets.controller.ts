@@ -121,14 +121,43 @@ export class MeusIngressosController {
     return ingressos.map((ingresso) => this.ingressoMapper.toMeuIngressoResponse(ingresso));
   }
 
+  /** Transferências que outras pessoas enviaram pra esse usuário e ainda esperam aceite dele. */
+  @Get("recebidas")
+  async transferenciasRecebidas(@CurrentUser() usuario: AuthenticatedUser) {
+    const ingressos = await this.ticketsService.listarTransferenciasRecebidas(usuario.id);
+    return ingressos.map((ingresso) => this.ingressoMapper.toMeuIngressoResponse(ingresso));
+  }
+
+  /** Só inicia — o ingresso vai pra 'aguardando_aceite', não muda de dono até o destinatário aceitar. */
   @Post(":ticketId/transferir")
   async transferir(
     @Param("ticketId") ticketId: string,
     @Body() dto: TransferirIngressoDto,
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    await this.ticketsService.transferir(ticketId, usuario.id, dto.destinatarioEmail);
-    return { transferido: true };
+    await this.ticketsService.iniciarTransferencia(ticketId, usuario.id, dto.destinatarioEmail);
+    return { iniciada: true };
+  }
+
+  /** Remetente desiste antes do aceite — volta pra carteira de quem enviou. */
+  @Post(":ticketId/transferir/cancelar")
+  async cancelarTransferencia(@Param("ticketId") ticketId: string, @CurrentUser() usuario: AuthenticatedUser) {
+    await this.ticketsService.cancelarTransferencia(ticketId, usuario.id);
+    return { cancelada: true };
+  }
+
+  /** Destinatário aceita — só agora o ingresso muda de dono de verdade. */
+  @Post(":ticketId/aceitar")
+  async aceitarTransferencia(@Param("ticketId") ticketId: string, @CurrentUser() usuario: AuthenticatedUser) {
+    const ingresso = await this.ticketsService.aceitarTransferencia(ticketId, usuario.id);
+    return this.ingressoMapper.toResponse(ingresso);
+  }
+
+  /** Destinatário recusa — mesmo efeito de cancelarTransferencia, mas iniciado por quem recebeu. */
+  @Post(":ticketId/recusar")
+  async recusarTransferencia(@Param("ticketId") ticketId: string, @CurrentUser() usuario: AuthenticatedUser) {
+    await this.ticketsService.recusarTransferencia(ticketId, usuario.id);
+    return { recusada: true };
   }
 
   @Post(":ticketId/cancelar")

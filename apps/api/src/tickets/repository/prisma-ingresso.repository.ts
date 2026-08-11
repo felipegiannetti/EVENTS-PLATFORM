@@ -4,7 +4,12 @@ import type { StatusIngresso } from "@events-platform/shared-types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { IngressoModel } from "../model/ingresso.model";
 import { MeuIngressoModel } from "../model/meu-ingresso.model";
-import type { AtualizarCompradorData, CriarIngressoData, IngressoRepository, TransferirIngressoData } from "./ingresso.repository";
+import type {
+  AceitarTransferenciaData,
+  AtualizarCompradorData,
+  CriarIngressoData,
+  IngressoRepository,
+} from "./ingresso.repository";
 
 const INCLUI_CUPOM = { cupomDesconto: { select: { codigo: true } } } as const;
 
@@ -47,20 +52,42 @@ export class PrismaIngressoRepository implements IngressoRepository {
     return this.toModel(ingresso);
   }
 
-  async transferirSePertence(
-    id: string,
-    compradorEmailAtual: string,
-    data: TransferirIngressoData,
-  ): Promise<IngressoModel | null> {
+  async iniciarTransferenciaSePertence(id: string, compradorEmailAtual: string, destinatarioEmail: string): Promise<IngressoModel | null> {
     const resultado = await this.prisma.ingresso.updateMany({
       where: { id, compradorEmail: compradorEmailAtual, status: "valido", transferivel: true },
+      data: { status: "aguardando_aceite", destinatarioTransferenciaEmail: destinatarioEmail, version: { increment: 1 } },
+    });
+    return resultado.count === 1 ? this.buscarPorId(id) : null;
+  }
+
+  async cancelarTransferenciaSePertence(id: string, compradorEmailAtual: string): Promise<IngressoModel | null> {
+    const resultado = await this.prisma.ingresso.updateMany({
+      where: { id, compradorEmail: compradorEmailAtual, status: "aguardando_aceite" },
+      data: { status: "valido", destinatarioTransferenciaEmail: null, version: { increment: 1 } },
+    });
+    return resultado.count === 1 ? this.buscarPorId(id) : null;
+  }
+
+  async aceitarTransferenciaSeDestinatario(id: string, destinatarioEmail: string, data: AceitarTransferenciaData): Promise<IngressoModel | null> {
+    const resultado = await this.prisma.ingresso.updateMany({
+      where: { id, destinatarioTransferenciaEmail: destinatarioEmail, status: "aguardando_aceite" },
       data: {
+        status: "valido",
         compradorNome: data.compradorNome,
         compradorEmail: data.compradorEmail,
         compradorDocumento: data.compradorDocumento,
         qrToken: data.qrToken,
+        destinatarioTransferenciaEmail: null,
         version: { increment: 1 },
       },
+    });
+    return resultado.count === 1 ? this.buscarPorId(id) : null;
+  }
+
+  async recusarTransferenciaSeDestinatario(id: string, destinatarioEmail: string): Promise<IngressoModel | null> {
+    const resultado = await this.prisma.ingresso.updateMany({
+      where: { id, destinatarioTransferenciaEmail: destinatarioEmail, status: "aguardando_aceite" },
+      data: { status: "valido", destinatarioTransferenciaEmail: null, version: { increment: 1 } },
     });
     return resultado.count === 1 ? this.buscarPorId(id) : null;
   }
@@ -114,6 +141,21 @@ export class PrismaIngressoRepository implements IngressoRepository {
     );
   }
 
+  async listarTransferenciasPendentesPorDestinatario(email: string): Promise<MeuIngressoModel[]> {
+    const ingressos = await this.prisma.ingresso.findMany({
+      where: { destinatarioTransferenciaEmail: email, status: "aguardando_aceite" },
+      orderBy: { criadoEm: "desc" },
+      include: {
+        ...INCLUI_CUPOM,
+        evento: { select: { nome: true, data: true } },
+        lote: { select: { nome: true } },
+      },
+    });
+    return ingressos.map(
+      (ingresso) => new MeuIngressoModel(this.toModel(ingresso), ingresso.evento.nome, ingresso.evento.data, ingresso.lote.nome),
+    );
+  }
+
   private toModel(ingresso: IngressoComCupom): IngressoModel {
     return new IngressoModel(
       ingresso.id,
@@ -127,6 +169,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
       ingresso.compradorNome,
       ingresso.compradorEmail,
       ingresso.compradorDocumento,
+      ingresso.destinatarioTransferenciaEmail,
       ingresso.cupomDescontoId,
       ingresso.cupomDesconto?.codigo ?? null,
       ingresso.criadoEm,

@@ -31,6 +31,8 @@ import { RESERVA_REPOSITORY, type ReservaRepository } from "./repository/reserva
 import type { ReservaModel } from "./model/reserva.model";
 import { ReservaNaoEncontradaException } from "./exceptions/reserva-nao-encontrada.exception";
 import { ReservaNaoDisponivelException } from "./exceptions/reserva-nao-disponivel.exception";
+import { TransferenciaNaoPendenteException } from "./exceptions/transferencia-nao-pendente.exception";
+import { IngressoAguardandoAceiteException } from "./exceptions/ingresso-aguardando-aceite.exception";
 
 @Injectable()
 export class TicketsService {
@@ -311,7 +313,13 @@ export class TicketsService {
     return this.ingressoRepository.listarPorCompradorEmail(email);
   }
 
-  async transferir(id: string, usuarioId: string, destinatarioEmail: string): Promise<void> {
+  /**
+   * Inicia a transferência — NÃO move o ingresso ainda. O destinatário precisa aceitar explicitamente
+   * (ver aceitarTransferencia) antes dele cair na carteira; até lá, o remetente ainda pode desistir
+   * (ver cancelarTransferencia) e o ingresso fica com status 'aguardando_aceite' — não usável no
+   * check-in nem cancelável via self-service nesse meio-tempo.
+   */
+  async iniciarTransferencia(id: string, usuarioId: string, destinatarioEmail: string): Promise<void> {
     const [ingresso, proprietario, destinatario] = await Promise.all([
       this.buscar(id),
       this.usuarioRepository.buscarPorId(usuarioId),
@@ -333,29 +341,127 @@ export class TicketsService {
     }
 
     const evento = await this.eventoRepository.buscarPorId(ingresso.eventoId);
-    if (evento?.prazoTransferenciaHoras != null) {
-      const prazoMs = evento.prazoTransferenciaHoras * 60 * 60 * 1000;
-      if (Date.now() > evento.data.getTime() - prazoMs) {
-        throw new PrazoTransferenciaExpiradoException();
+    if (evento) {
+      // Trava base — nunca permitido depois que o evento já começou, mesmo sem prazo configurado
+      // (evento.prazoTransferenciaHoras === null não deveria significar "sem trava nenhuma", só "sem
+      // trava ADICIONAL antes do início" — transferir um ingresso pro meio/depois do evento não faz sentido).
+      if (Date.now() >= evento.data.getTime()) {
+        throw new PrazoTransferenciaExpiradoException("evento_iniciado");
+      }
+      if (evento.prazoTransferenciaHoras != null) {
+        const prazoMs = evento.prazoTransferenciaHoras * 60 * 60 * 1000;
+        if (Date.now() > evento.data.getTime() - prazoMs) {
+          throw new PrazoTransferenciaExpiradoException("prazo_configurado");
+        }
       }
     }
 
-    // Rotacionar o QR invalida qualquer captura que o antigo dono tenha guardado.
-    const transferido = await this.ingressoRepository.transferirSePertence(id, proprietario.email, {
+    const iniciado = await this.ingressoRepository.iniciarTransferenciaSePertence(id, proprietario.email, destinatario.email);
+    if (!iniciado) {
+      throw new IngressoNaoTransferivelException();
+    }
+
+    try {
+      await this.enviarEmailTransferenciaPendente(iniciado, proprietario.nome);
+    } catch (erro) {
+      this.logger.warn(`Transferência do ingresso ${id} iniciada, mas o email ao destinatário falhou: ${(erro as Error).message}`);
+    }
+  }
+
+  /** Remetente desiste antes do destinatário aceitar — o ingresso volta pra 'valido' na carteira de quem enviou. */
+  async cancelarTransferencia(id: string, usuarioId: string): Promise<void> {
+    const [ingresso, proprietario] = await Promise.all([this.buscar(id), this.usuarioRepository.buscarPorId(usuarioId)]);
+    if (!proprietario || ingresso.compradorEmail !== proprietario.email) {
+      throw new IngressoNaoEncontradoException();
+    }
+    if (ingresso.status !== "aguardando_aceite") {
+      throw new TransferenciaNaoPendenteException();
+    }
+    const cancelado = await this.ingressoRepository.cancelarTransferenciaSePertence(id, proprietario.email);
+    if (!cancelado) {
+      throw new TransferenciaNaoPendenteException();
+    }
+  }
+
+  /** Destinatário aceita — só agora o ingresso muda de dono de verdade (QR rotacionado, invalida qualquer captura anterior). */
+  async aceitarTransferencia(id: string, usuarioId: string): Promise<IngressoModel> {
+    const [ingresso, destinatario] = await Promise.all([this.buscar(id), this.usuarioRepository.buscarPorId(usuarioId)]);
+    if (!destinatario || ingresso.destinatarioTransferenciaEmail !== destinatario.email) {
+      // Mesmo padrão: não revela a quem não é o destinatário que essa transferência existe.
+      throw new IngressoNaoEncontradoException();
+    }
+    if (ingresso.status !== "aguardando_aceite") {
+      throw new TransferenciaNaoPendenteException();
+    }
+
+    const aceito = await this.ingressoRepository.aceitarTransferenciaSeDestinatario(id, destinatario.email, {
       compradorNome: destinatario.nome,
       compradorEmail: destinatario.email,
       compradorDocumento: destinatario.documento,
       qrToken: gerarQrToken(id, this.config.getOrThrow<string>("QR_TOKEN_SECRET")),
     });
-    if (!transferido) {
-      throw new IngressoNaoTransferivelException();
+    if (!aceito) {
+      throw new TransferenciaNaoPendenteException();
     }
 
     try {
-      await this.enviarEmailConfirmacao(transferido);
+      await this.enviarEmailConfirmacao(aceito);
     } catch (erro) {
-      this.logger.warn(`Ingresso ${id} transferido, mas o email ao destinatário falhou: ${(erro as Error).message}`);
+      this.logger.warn(`Transferência do ingresso ${id} aceita, mas o email de confirmação falhou: ${(erro as Error).message}`);
     }
+    return aceito;
+  }
+
+  /** Destinatário recusa — mesmo efeito de cancelarTransferencia (volta pro remetente), mas iniciado por quem recebeu. */
+  async recusarTransferencia(id: string, usuarioId: string): Promise<void> {
+    const [ingresso, destinatario] = await Promise.all([this.buscar(id), this.usuarioRepository.buscarPorId(usuarioId)]);
+    if (!destinatario || ingresso.destinatarioTransferenciaEmail !== destinatario.email) {
+      throw new IngressoNaoEncontradoException();
+    }
+    if (ingresso.status !== "aguardando_aceite") {
+      throw new TransferenciaNaoPendenteException();
+    }
+    const recusado = await this.ingressoRepository.recusarTransferenciaSeDestinatario(id, destinatario.email);
+    if (!recusado) {
+      throw new TransferenciaNaoPendenteException();
+    }
+  }
+
+  /** Transferências que outras pessoas enviaram pra esse usuário e ainda esperam aceite dele. */
+  async listarTransferenciasRecebidas(usuarioId: string): Promise<MeuIngressoModel[]> {
+    const usuario = await this.usuarioRepository.buscarPorId(usuarioId);
+    if (!usuario) {
+      return [];
+    }
+    return this.ingressoRepository.listarTransferenciasPendentesPorDestinatario(usuario.email);
+  }
+
+  private async enviarEmailTransferenciaPendente(ingresso: IngressoModel, nomeRemetente: string): Promise<void> {
+    if (!ingresso.destinatarioTransferenciaEmail) {
+      return;
+    }
+    const evento = await this.eventoRepository.buscarPorId(ingresso.eventoId);
+    if (!evento) {
+      return;
+    }
+    const nomeEvento = escaparHtml(evento.nome);
+    const remetente = escaparHtml(nomeRemetente);
+    const html = `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+        <p style="display:inline-block;margin:0 0 16px;padding:6px 14px;border-radius:999px;background:#f0e8ff;color:#6d28d9;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+          Transferência de ingresso
+        </p>
+        <p style="font-size:15px;line-height:1.6;color:#16152a;"><strong>${remetente}</strong> quer te transferir o ingresso para <strong>${nomeEvento}</strong>.</p>
+        <p style="font-size:14px;line-height:1.6;color:#16152a;">Entre na sua conta na RARO Tickets com este email e acesse "Meus ingressos" &gt; "Transferências recebidas" para aceitar ou recusar.</p>
+        <hr style="border:none;border-top:1px solid #e5e0f5;margin:24px 0 12px;">
+        <p style="font-size:12px;color:#666">Enquanto você não aceitar, o ingresso continua com quem enviou — nada muda até você decidir.</p>
+      </div>
+    `;
+    await this.mailService.enviar({
+      para: [ingresso.destinatarioTransferenciaEmail],
+      assunto: `[RARO Tickets] Você recebeu uma transferência de ingresso — ${evento.nome}`,
+      html,
+    });
   }
 
   /**
@@ -369,8 +475,11 @@ export class TicketsService {
     const [ingresso, proprietario] = await Promise.all([this.buscar(id), this.usuarioRepository.buscarPorId(usuarioId)]);
 
     if (!proprietario || ingresso.compradorEmail !== proprietario.email) {
-      // Mesmo padrão de transferir(): não revela se um UUID arbitrário pertence a outra pessoa.
+      // Mesmo padrão de iniciarTransferencia(): não revela se um UUID arbitrário pertence a outra pessoa.
       throw new IngressoNaoEncontradoException();
+    }
+    if (ingresso.status === "aguardando_aceite") {
+      throw new IngressoAguardandoAceiteException();
     }
 
     const evento = await this.eventoRepository.buscarPorId(ingresso.eventoId);
@@ -406,6 +515,9 @@ export class TicketsService {
     const ingresso = await this.ingressoRepository.buscarPorId(ingressoId);
     if (!ingresso || ingresso.eventoId !== eventoId) {
       throw new IngressoNaoEncontradoException();
+    }
+    if (ingresso.status === "aguardando_aceite") {
+      throw new IngressoAguardandoAceiteException();
     }
     if (ingresso.status !== "valido") {
       throw new IngressoJaUtilizadoException();

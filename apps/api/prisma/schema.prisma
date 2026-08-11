@@ -24,6 +24,10 @@ enum StatusIngresso {
   valido
   usado
   cancelado
+  /// Transferência iniciada pelo remetente, mas o destinatário ainda não aceitou — o ingresso não
+  /// pertence de fato a ninguém nesse meio-tempo: não pode ser usado no check-in, nem cancelado via
+  /// self-service, mas o remetente ainda pode desistir e reclamar de volta. Ver TicketsService.
+  aguardando_aceite
 }
 
 enum TaxaPagaPor {
@@ -306,6 +310,9 @@ model Ingresso {
   compradorNome      String?
   compradorEmail     String?
   compradorDocumento String?
+  /// Preenchido quando status='aguardando_aceite' — o email de quem precisa aceitar a transferência
+  /// pra virar o novo compradorEmail. Nunca coexiste com o ingresso sendo 'valido'.
+  destinatarioTransferenciaEmail String?
   criadoEm     DateTime       @default(now())
   atualizadoEm DateTime       @updatedAt
 

@@ -4,8 +4,13 @@ export type PapelGlobal = (typeof PAPEL_GLOBAL)[number];
 export const PAPEL_EVENTO = ["owner", "gestor", "view", "checkin_operator"] as const;
 export type PapelEvento = (typeof PAPEL_EVENTO)[number];
 
-/** "pendente" ainda não é produzido por nenhum fluxo (não existe checkout/pagamento assíncrono) — existe só pra a UI (tela de Participantes) já estar pronta pra quando o gateway de pagamento entrar. */
-export const STATUS_INGRESSO = ["pendente", "valido", "usado", "cancelado"] as const;
+/**
+ * "pendente" ainda não é produzido por nenhum fluxo (não existe checkout/pagamento assíncrono) —
+ * existe só pra a UI (tela de Participantes) já estar pronta pra quando o gateway de pagamento entrar.
+ * "aguardando_aceite" é diferente: já é produzido hoje — transferência iniciada mas o destinatário
+ * ainda não aceitou (não pode ser usado no check-in nem cancelado via self-service nesse meio-tempo).
+ */
+export const STATUS_INGRESSO = ["pendente", "valido", "usado", "cancelado", "aguardando_aceite"] as const;
 export type StatusIngresso = (typeof STATUS_INGRESSO)[number];
 
 export const TAXA_PAGA_POR = ["comprador", "organizador"] as const;

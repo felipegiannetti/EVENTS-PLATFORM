@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, Clock3, Sparkles, Ticket, Tickets } from "lucide-react";
+import { CalendarDays, ChevronDown, Clock3, Send, Sparkles, Ticket, Tickets } from "lucide-react";
 import type { MeuIngressoResponse } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { StatusDot } from "@/components/ui/status-dot";
+import { Button } from "@/components/ui/button";
 import { TicketQrModal } from "@/components/ticket-qr-modal";
 import { ApiError } from "@/lib/api-client";
 import { COR_STATUS_INGRESSO, ROTULO_STATUS_INGRESSO } from "@/lib/status-ingresso";
-import { listarMeusIngressos } from "@/lib/tickets-client";
+import { aceitarTransferenciaIngresso, listarMeusIngressos, listarTransferenciasRecebidas, recusarTransferenciaIngresso } from "@/lib/tickets-client";
 
 type Filtro = "proximos" | "passados";
 
@@ -25,16 +26,24 @@ export default function MeusIngressosPage() {
 
 function ListaMeusIngressos({ token }: { token: string }) {
   const [ingressos, setIngressos] = useState<MeuIngressoResponse[] | null>(null);
+  const [recebidas, setRecebidas] = useState<MeuIngressoResponse[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroRecebidas, setErroRecebidas] = useState<string | null>(null);
+  const [processandoId, setProcessandoId] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("proximos");
   const [eventoAberto, setEventoAberto] = useState<string | null>(null);
   const [ingressoSelecionado, setIngressoSelecionado] = useState<MeuIngressoResponse | null>(null);
 
-  useEffect(() => {
+  function carregar() {
     listarMeusIngressos(token)
       .then(setIngressos)
       .catch((err) => setErro(err instanceof ApiError ? err.message : "Não foi possível carregar seus ingressos."));
-  }, [token]);
+    listarTransferenciasRecebidas(token)
+      .then(setRecebidas)
+      .catch((err) => setErroRecebidas(err instanceof ApiError ? err.message : "Não foi possível carregar as transferências recebidas."));
+  }
+
+  useEffect(carregar, [token]);
 
   const agora = new Date();
   const proximos = ingressos?.filter((i) => new Date(i.eventoData) >= agora) ?? [];
@@ -55,12 +64,30 @@ function ListaMeusIngressos({ token }: { token: string }) {
     setEventoAberto(null);
   }
 
-  function removerIngressoTransferido(id: string) {
-    setIngressos((atuais) => atuais?.filter((ingresso) => ingresso.id !== id) ?? null);
+  async function aceitar(id: string) {
+    setErroRecebidas(null);
+    setProcessandoId(id);
+    try {
+      await aceitarTransferenciaIngresso(id, token);
+      carregar();
+    } catch (err) {
+      setErroRecebidas(err instanceof ApiError ? err.message : "Não foi possível aceitar a transferência.");
+    } finally {
+      setProcessandoId(null);
+    }
   }
 
-  function marcarIngressoCancelado(id: string) {
-    setIngressos((atuais) => atuais?.map((ingresso) => (ingresso.id === id ? { ...ingresso, status: "cancelado" } : ingresso)) ?? null);
+  async function recusar(id: string) {
+    setErroRecebidas(null);
+    setProcessandoId(id);
+    try {
+      await recusarTransferenciaIngresso(id, token);
+      carregar();
+    } catch (err) {
+      setErroRecebidas(err instanceof ApiError ? err.message : "Não foi possível recusar a transferência.");
+    } finally {
+      setProcessandoId(null);
+    }
   }
 
   return (
@@ -73,6 +100,50 @@ function ListaMeusIngressos({ token }: { token: string }) {
 
       {erro && <p className="mt-6 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{erro}</p>}
       {ingressos === null && !erro && <CarteiraSkeleton />}
+
+      {recebidas !== null && recebidas.length > 0 && (
+        <div className="mt-8 rounded-3xl border border-primary/20 bg-primary/5 p-5 sm:p-6">
+          <div className="flex items-center gap-2 text-sm font-bold text-primary">
+            <Send size={16} /> Transferências recebidas
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            Alguém te enviou {recebidas.length === 1 ? "um ingresso" : `${recebidas.length} ingressos`}. Aceite para adicionar à sua carteira, ou recuse para devolver.
+          </p>
+          {erroRecebidas && <p className="mt-3 text-sm text-danger">{erroRecebidas}</p>}
+          <div className="mt-4 flex flex-col gap-3">
+            {recebidas.map((ingresso) => (
+              <div
+                key={ingresso.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border/10 bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{ingresso.eventoNome}</p>
+                  <p className="mt-0.5 text-xs text-muted">{ingresso.loteNome} · {formatarData(ingresso.eventoData)}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="!h-9 !px-4 !text-xs"
+                    disabled={processandoId === ingresso.id}
+                    onClick={() => recusar(ingresso.id)}
+                  >
+                    Recusar
+                  </Button>
+                  <Button
+                    type="button"
+                    className="!h-9 !px-4 !text-xs"
+                    loading={processandoId === ingresso.id}
+                    onClick={() => aceitar(ingresso.id)}
+                  >
+                    Aceitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {ingressos !== null && (
         <>
@@ -193,8 +264,9 @@ function ListaMeusIngressos({ token }: { token: string }) {
         <TicketQrModal
           ingresso={ingressoSelecionado}
           token={token}
-          onTransferido={() => removerIngressoTransferido(ingressoSelecionado.id)}
-          onCancelado={() => marcarIngressoCancelado(ingressoSelecionado.id)}
+          onTransferido={carregar}
+          onTransferenciaCancelada={carregar}
+          onCancelado={carregar}
           onFechar={() => setIngressoSelecionado(null)}
         />
       )}

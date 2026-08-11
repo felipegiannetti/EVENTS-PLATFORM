@@ -18,6 +18,7 @@ export class IngressoMapper {
       compradorNome: model.compradorNome,
       compradorEmail: model.compradorEmail,
       compradorDocumento: model.compradorDocumento,
+      destinatarioTransferenciaEmail: model.destinatarioTransferenciaEmail,
       cupomCodigo: model.cupomCodigo,
       criadoEm: model.criadoEm.toISOString(),
     };

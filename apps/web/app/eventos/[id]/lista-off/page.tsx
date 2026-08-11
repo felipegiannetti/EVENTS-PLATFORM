@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle2, ClipboardList, Clock3, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { CheckCircle2, ClipboardList, Clock3, Pencil, Plus, Trash2, UserCheck, Users, X } from "lucide-react";
 import type { ListaOffGrupoResponse, PessoaListaOffResponse, PessoasListaOffPaginadas } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   atualizarListaOff,
   atualizarPessoaListaOff,
   criarListaOff,
+  fazerCheckinListaOff,
   importarPessoasListaOff,
   listarListasOff,
   listarPessoasListaOff,
@@ -43,6 +44,7 @@ function GestaoListaOff({ token }: { token: string }) {
   const [importando, setImportando] = useState(false);
   const [listaEditando, setListaEditando] = useState<ListaOffGrupoResponse | null>(null);
   const [pessoaEditando, setPessoaEditando] = useState<PessoaListaOffResponse | null>(null);
+  const [confirmandoEntradaId, setConfirmandoEntradaId] = useState<string | null>(null);
 
   const listaSelecionada = listas.find((lista) => lista.id === listaId) ?? null;
 
@@ -69,9 +71,12 @@ function GestaoListaOff({ token }: { token: string }) {
   }, [id, token]);
 
   useEffect(() => {
-    carregarPessoas().catch((err) => setErro(mensagemErro(err)));
+    const timer = window.setTimeout(() => {
+      carregarPessoas().catch((err) => setErro(mensagemErro(err)));
+    }, 300);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listaId, pagina]);
+  }, [listaId, pagina, buscaNome, buscaCpf]);
 
   async function criarLista(e: FormEvent) {
     e.preventDefault();
@@ -131,10 +136,20 @@ function GestaoListaOff({ token }: { token: string }) {
     }
   }
 
-  function pesquisar(e: FormEvent) {
-    e.preventDefault();
-    setPagina(1);
-    carregarPessoas(1).catch((err) => setErro(mensagemErro(err)));
+  async function confirmarEntrada(pessoa: PessoaListaOffResponse) {
+    if (!listaId) return;
+    setErro(null);
+    setSucesso(null);
+    setConfirmandoEntradaId(pessoa.id);
+    try {
+      await fazerCheckinListaOff(id, listaId, pessoa.id, token);
+      await Promise.all([carregarListas(listaId), carregarPessoas()]);
+      setSucesso(`Entrada confirmada para ${pessoa.nomeCompleto}.`);
+    } catch (err) {
+      setErro(mensagemErro(err));
+    } finally {
+      setConfirmandoEntradaId(null);
+    }
   }
 
   return (
@@ -197,16 +212,31 @@ function GestaoListaOff({ token }: { token: string }) {
 
               <Card className="mt-5 p-6">
                 <h2 className="section-title !text-base">Pessoas cadastradas</h2>
-                <form onSubmit={pesquisar} className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_220px_auto]">
-                  <Input id="buscaNomeGestao" label="Pesquisar nome" placeholder="Nome completo" value={buscaNome} onChange={(e) => setBuscaNome(e.target.value)} />
-                  <Input id="buscaCpfGestao" label="Pesquisar CPF" inputMode="numeric" placeholder="000.000.000-00" value={buscaCpf} onChange={(e) => setBuscaCpf(formatarCpf(e.target.value))} />
-                  <Button type="submit" variant="secondary"><Search size={16} /> Buscar</Button>
-                </form>
+                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_220px]">
+                  <Input id="buscaNomeGestao" label="Pesquisar nome" placeholder="Nome completo" value={buscaNome} onChange={(e) => { setBuscaNome(e.target.value); setPagina(1); }} />
+                  <Input id="buscaCpfGestao" label="Pesquisar CPF" inputMode="numeric" placeholder="000.000.000-00" value={buscaCpf} onChange={(e) => { setBuscaCpf(formatarCpf(e.target.value)); setPagina(1); }} />
+                </div>
+                <p className="mt-2 text-xs text-muted">Os resultados aparecem automaticamente enquanto você digita.</p>
                 <div className="mt-5 overflow-hidden rounded-xl border border-border/10">
                   {!pessoas ? <p className="p-5 text-sm text-muted">Carregando...</p> : pessoas.itens.length === 0 ? <p className="p-5 text-sm text-muted">Nenhuma pessoa encontrada.</p> : pessoas.itens.map((pessoa) => (
                     <div key={pessoa.id} className="flex flex-wrap items-center gap-3 border-b border-border/10 px-4 py-3 last:border-b-0">
                       <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{pessoa.nomeCompleto}</p><p className="text-xs text-muted">{pessoa.cpf}</p></div>
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${pessoa.statusUso ? "bg-success/10 text-success" : "bg-background text-muted"}`}>{pessoa.statusUso ? "Check-in feito" : "Aguardando"}</span>
+                      {pessoa.statusUso ? (
+                        <div className="text-right">
+                          <span className="rounded-full bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase text-success">Check-in feito</span>
+                          {pessoa.usadoEm && <p className="mt-1 text-[10px] text-muted">{formatarData(pessoa.usadoEm)}</p>}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={confirmandoEntradaId !== null}
+                          onClick={() => confirmarEntrada(pessoa)}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-success/20 bg-success/5 px-3 text-xs font-semibold text-success transition hover:bg-success/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {confirmandoEntradaId === pessoa.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-success/30 border-t-success" /> : <UserCheck size={14} />}
+                          Confirmar entrada
+                        </button>
+                      )}
                       <button type="button" aria-label="Editar pessoa" onClick={() => setPessoaEditando(pessoa)} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-primary/10 hover:text-primary"><Pencil size={15} /></button>
                       <button type="button" aria-label="Remover pessoa" onClick={() => excluirPessoa(pessoa)} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-danger/10 hover:text-danger"><Trash2 size={15} /></button>
                     </div>

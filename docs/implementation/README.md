@@ -91,13 +91,18 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 
 ### Admin (`apps/api/src/admin/`)
 
-Todas as rotas exigem `papelGlobal: admin_geral` por `RolesGuard`.
+Todas as rotas exigem `papelGlobal: admin_geral` por `RolesGuard`. Frontend em `/admin/*` — sidebar própria (`AdminWorkspaceSidebar`, mesmo padrão do workspace de evento, esconde a navbar geral do site), 4 áreas: Suporte, Administrador (Acordos), Sistema, Financeiro. Pensada pra um dia virar subdomínio próprio, por isso já vive isolada.
 
 | Rota | Descrição |
 |---|---|
 | `GET /admin/organizadores` | Lista organizadores pelo vínculo estável `Evento.organizadorId`, seus eventos, indicação e histórico de acordos |
 | `POST /admin/acordos` | Cria acordo para sempre, próximos N eventos pagos ou evento específico. Desativa o acordo ativo anterior e rejeita percentual acima do espaço disponível nos 12% |
 | `PATCH /admin/acordos/:id/desativar` | Desativa um acordo sem apagar o histórico; criação e desativação geram `AuditLog` |
+| `GET /admin/eventos?busca=` | **Espaço de Suporte** — busca evento de qualquer organizador por nome do evento/organizador/email. Base de `/admin/suporte`, que deep-linka pra uma tela nova e somente-leitura mostrando ingressos e leituras de check-in daquele evento (sem nenhum botão de ação) |
+| `GET/POST /admin/feature-flags`, `PATCH .../:id/alternar` | **Espaço de Sistema** — CRUD de `FeatureFlag` (só registro/estado por enquanto, nenhuma funcionalidade do sistema checa esses flags ainda). Alternar gera `AuditLog` |
+| `GET /admin/financeiro` | **Espaço Financeiro** — consolidado entre todos os eventos com venda, reaproveitando `FinanceService.buscarResumoFinanceiro` por evento (mesmo cálculo que o organizador já vê, sem `Transacao` real por trás) |
+
+**`EventRoleGuard` (`apps/api/src/security/guards/event-role.guard.ts`) deixa `admin_geral` passar direto**, sem precisar de `PapelAcesso` — é o que faz o Suporte funcionar reaproveitando as rotas normais de tickets/eventos (`GET /events/:id`, `GET /events/:id/ingressos`, `GET /events/:id/checkin/leituras`) sem nenhuma rota nova pra ler esses dados. Isso vale pra **toda** rota gated por esse guard, não só as consumidas pelo Suporte — um `admin_geral` tecnicamente também consegue chamar rotas de escrita (editar/cancelar ingresso, etc.) que o frontend do admin não expõe hoje.
 
 ### Tickets (`apps/api/src/tickets/`)
 
@@ -165,9 +170,11 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 | `/meus-ingressos` | Lista os ingressos do usuário logado entre eventos (`GET /tickets/meus`), com toggle Próximos/Passados. Quando há transferências pendentes de outra pessoa (`GET /tickets/recebidas`), mostra uma seção "Transferências recebidas" no topo com botões Aceitar/Recusar por item, sem precisar abrir o modal. Clicar num ingresso próprio abre `TicketQrModal` (`components/ticket-qr-modal.tsx`) — bottom sheet com animação de baixo para cima mostrando nome do evento, código da compra (`ingresso.id`), nome, email, data de compra (`criadoEm`) e o QR code (gerado client-side com `qrcode` a partir do mesmo `qrToken` assinado que o check-in valida), com o código repetido como legenda logo abaixo do QR. **Transferir** passa por duas telas — inserir o email do destinatário, depois um popup dedicado de "Confirmar transferência" (mostra pra quem vai e o aviso de que fica bloqueado até aceite) — antes de chamar a API; a tela de sucesso deixa claro que é "Transferência enviada" (pendente), não "transferido". Enquanto `status === "aguardando_aceite"`, o modal mostra o QR bloqueado (esmaecido) e o menu troca as opções normais (Transferir/Cancelar) por uma única opção "Cancelar transferência" |
 | `/perfil` | Editar perfil, trocar email/senha, apagar conta (`/auth/me*`) |
 | `/indicacoes` | Cadastro e alteração da conta de recebimento com confirmação por email, criação de ofertas ilimitadas, edição/exclusão antes do uso, status imutável após o uso, preview das porcentagens e comissões estimadas com 0,25% fixo + bônus de negociação em todos os eventos pagos |
-| `/admin` | Área exclusiva do admin geral para escolher organizador, visualizar impacto do referral, configurar o acordo comercial e consultar/desativar o histórico |
+| `/admin/*` | Área exclusiva do `admin_geral` — sidebar própria (`AdminWorkspaceSidebar`), sem a navbar geral do site, gated no frontend por `ProtectedPage somenteAdmin` (checa `usuario.papelGlobal`, exposto via `AuthContext` depois de `GET /auth/me`) e no backend por `RolesGuard`. `/admin` é a visão geral (4 cards); `/admin/acordos` escolhe organizador, configura acordo comercial e consulta/desativa histórico; `/admin/suporte` busca evento de qualquer organizador e abre uma visão somente-leitura de ingressos + check-in; `/admin/sistema` cria/lista/alterna `FeatureFlag`; `/admin/financeiro` mostra o consolidado entre todos os eventos |
 
 **Painel do evento (`/eventos/[id]/*`)**: a partir do momento que o evento existe, todas as rotas abaixo de `/eventos/[id]` vivem dentro do **workspace do evento** — sidebar própria e escura (`EventWorkspaceSidebar`, `apps/web/components/event-workspace-sidebar.tsx`), sem a navbar/rodapé geral do site (`Header`/`Footer` se escondem via `useIsEventWorkspace`, `apps/web/lib/event-workspace.ts`). A sidebar agrupa as telas em: **Painel do evento** (Visão geral, Quem tem acesso, Configurações), **Ingressos** (Lotes e ingressos, Cupons de desconto), **Participantes**, **Check-in**, **Financeiro**.
+
+**Navbar do `Header` para sessões de admin**: quando `usuario.papelGlobal === "admin_geral"` (e a pessoa não está em nenhuma workspace), o `Header` (`apps/web/components/header.tsx`) deixa de mostrar a lista de links inline no desktop — só o botão de hamburger (sempre visível, não só `lg:hidden`) — e mostra um botão "Painel admin" (`ShieldCheck`) fixo ao lado da busca, levando pra `/admin`. Para qualquer outro usuário, a navbar não muda em nada.
 
 | Rota | Descrição |
 |---|---|

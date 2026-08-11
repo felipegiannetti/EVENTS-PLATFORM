@@ -14,6 +14,6 @@ import { DistribuicaoTaxaService } from "./distribuicao-taxa.service";
     DistribuicaoTaxaService,
     { provide: CONTA_BANCARIA_REPOSITORY, useClass: PrismaContaBancariaRepository },
   ],
-  exports: [DistribuicaoTaxaService],
+  exports: [DistribuicaoTaxaService, FinanceService],
 })
 export class FinanceModule {}

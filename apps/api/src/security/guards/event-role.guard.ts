@@ -28,6 +28,13 @@ export class EventRoleGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
+    // Superusuário — admin_geral tem acesso equivalente a owner em qualquer evento, sem precisar
+    // de um PapelAcesso próprio (usado pela área de Suporte do admin, entre outras).
+    if (request.user.papelGlobal === "admin_geral") {
+      return true;
+    }
+
     const eventoId = (request.params.eventoId ?? request.params.id) as string | undefined;
     if (!eventoId) {
       throw new ForbiddenException("Rota sem eventoId para checar permissão.");

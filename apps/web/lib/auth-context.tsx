@@ -1,12 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { LoginInput, RegisterInput } from "@events-platform/shared-types";
-import { loginRequest, logoutRequest, refreshRequest, registerRequest } from "./auth-client";
+import type { LoginInput, RegisterInput, UsuarioResponse } from "@events-platform/shared-types";
+import { buscarPerfil, loginRequest, logoutRequest, refreshRequest, registerRequest } from "./auth-client";
 import { registrarOuvinteDeRenovacao } from "./token-store";
 
 interface AuthContextValue {
   accessToken: string | null;
+  /** null enquanto não resolvido OU deslogado — nunca confundir com "carregando". Alimenta gates por papel (ex: somenteAdmin em ProtectedPage). */
+  usuario: UsuarioResponse | null;
   carregando: boolean;
   login: (input: LoginInput) => Promise<void>;
   registrar: (input: RegisterInput) => Promise<void>;
@@ -22,11 +24,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [usuario, setUsuario] = useState<UsuarioResponse | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     refreshRequest()
-      .then((sessao) => setAccessToken(sessao.accessToken))
+      .then(async (sessao) => {
+        setAccessToken(sessao.accessToken);
+        setUsuario(await buscarPerfil(sessao.accessToken).catch(() => null));
+      })
       .catch(() => setAccessToken(null))
       .finally(() => setCarregando(false));
 
@@ -37,11 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(input: LoginInput) {
     const sessao = await loginRequest(input);
     setAccessToken(sessao.accessToken);
+    setUsuario(await buscarPerfil(sessao.accessToken).catch(() => null));
   }
 
   async function registrar(input: RegisterInput) {
     const sessao = await registerRequest(input);
     setAccessToken(sessao.accessToken);
+    setUsuario(await buscarPerfil(sessao.accessToken).catch(() => null));
   }
 
   async function logout() {
@@ -49,10 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await logoutRequest(accessToken).catch(() => undefined);
     }
     setAccessToken(null);
+    setUsuario(null);
   }
 
   return (
-    <AuthContext.Provider value={{ accessToken, carregando, login, registrar, logout }}>
+    <AuthContext.Provider value={{ accessToken, usuario, carregando, login, registrar, logout }}>
       {children}
     </AuthContext.Provider>
   );

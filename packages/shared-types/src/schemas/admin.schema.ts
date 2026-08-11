@@ -40,3 +40,59 @@ export const organizadorAdminResponseSchema = z.object({
   acordos: z.array(acordoComercialResponseSchema),
 });
 export type OrganizadorAdminResponse = z.infer<typeof organizadorAdminResponseSchema>;
+
+/** Espaço de Suporte — busca de evento de qualquer organizador (modo leitura, ver EventRoleGuard). */
+export const eventoAdminResponseSchema = z.object({
+  id: z.string().uuid(),
+  nome: z.string(),
+  organizadorNome: z.string().nullable(),
+  organizadorEmail: z.string().email().nullable(),
+  data: z.string().datetime(),
+  cidade: z.string().nullable(),
+  estado: z.string().nullable(),
+  publicado: z.boolean(),
+});
+export type EventoAdminResponse = z.infer<typeof eventoAdminResponseSchema>;
+
+/** Espaço de Sistema — registro de funcionalidades ligáveis/desligáveis. Nenhuma delas é checada por código ainda (ver docs/architecture/11-roadmap.md); é só o CRUD/estado. */
+export const criarFeatureFlagSchema = z.object({
+  chave: z.string().min(2).max(80),
+});
+export type CriarFeatureFlagInput = z.infer<typeof criarFeatureFlagSchema>;
+
+export const featureFlagResponseSchema = z.object({
+  id: z.string().uuid(),
+  chave: z.string(),
+  ativo: z.boolean(),
+  eventosEscopo: z.array(z.string()),
+  criadoEm: z.string().datetime(),
+});
+export type FeatureFlagResponse = z.infer<typeof featureFlagResponseSchema>;
+
+/**
+ * Espaço Financeiro do admin — consolidado entre todos os eventos, reaproveitando o mesmo cálculo
+ * de ResumoFinanceiroEvento por evento (não existe Transacao real hoje, ver resumo-financeiro.schema.ts).
+ */
+export const financeiroAdminEventoResponseSchema = z.object({
+  eventoId: z.string().uuid(),
+  eventoNome: z.string(),
+  organizadorNome: z.string().nullable(),
+  data: z.string().datetime(),
+  vendasBrutas: z.number(),
+  taxaRetidaPlataforma: z.number(),
+  valorRepasseOrganizador: z.number(),
+  ingressosValidos: z.number().int(),
+});
+export type FinanceiroAdminEventoResponse = z.infer<typeof financeiroAdminEventoResponseSchema>;
+
+export const financeiroAdminResponseSchema = z.object({
+  totais: z.object({
+    vendasBrutas: z.number(),
+    taxaRetidaPlataforma: z.number(),
+    valorRepasseOrganizador: z.number(),
+    totalEventos: z.number().int(),
+    totalIngressosValidos: z.number().int(),
+  }),
+  eventos: z.array(financeiroAdminEventoResponseSchema),
+});
+export type FinanceiroAdminResponse = z.infer<typeof financeiroAdminResponseSchema>;

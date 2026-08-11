@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LogOut, Menu, Plus, Search, Ticket, User, X } from "lucide-react";
+import { LogOut, Menu, Plus, Search, ShieldCheck, Ticket, User, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useIsEventWorkspace } from "@/lib/event-workspace";
+import { useIsAdminWorkspace } from "@/lib/admin-workspace";
 import { Button } from "@/components/ui/button";
 
 export function Brand({ compact = false }: { compact?: boolean }) {
@@ -24,13 +25,16 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 }
 
 export function Header() {
-  const { accessToken, carregando, logout } = useAuth();
+  const { accessToken, usuario, carregando, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const emWorkspaceDeEvento = useIsEventWorkspace();
+  const emWorkspaceDeAdmin = useIsAdminWorkspace();
 
-  if (emWorkspaceDeEvento) {
+  if (emWorkspaceDeEvento || emWorkspaceDeAdmin) {
     return null;
   }
+
+  const ehAdmin = usuario?.papelGlobal === "admin_geral";
 
   const navPublico = [
     { href: "/eventos/todos", label: "Eventos" },
@@ -51,17 +55,19 @@ export function Header() {
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-5 sm:px-8">
         <Brand />
 
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Navegação principal">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {!ehAdmin && (
+          <nav className="hidden items-center gap-7 lg:flex" aria-label="Navegação principal">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <div className="flex items-center gap-2">
           <Link
@@ -72,6 +78,16 @@ export function Header() {
           >
             <Search size={18} />
           </Link>
+          {ehAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Painel admin"
+              title="Painel admin"
+              className="flex h-10 items-center gap-2 rounded-xl border border-primary/25 bg-primary/8 px-3 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-primary/15"
+            >
+              <ShieldCheck size={17} /> <span className="hidden sm:inline">Painel admin</span>
+            </Link>
+          )}
           {!carregando && accessToken ? (
             <>
               <Link href="/eventos/novo" className="hidden sm:block">
@@ -108,7 +124,7 @@ export function Header() {
             aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="grid h-10 w-10 place-items-center rounded-xl border border-border/15 text-foreground lg:hidden"
+            className={`grid h-10 w-10 place-items-center rounded-xl border border-border/15 text-foreground ${ehAdmin ? "" : "lg:hidden"}`}
           >
             {menuOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
@@ -116,7 +132,7 @@ export function Header() {
       </div>
 
       {menuOpen && (
-        <div className="border-t border-border/10 bg-card/95 px-5 py-5 backdrop-blur-xl lg:hidden">
+        <div className={`border-t border-border/10 bg-card/95 px-5 py-5 backdrop-blur-xl ${ehAdmin ? "" : "lg:hidden"}`}>
           <nav className="mx-auto flex max-w-6xl flex-col gap-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-3 text-sm font-medium text-foreground hover:bg-primary/10">

@@ -83,6 +83,13 @@ export class TicketsController {
 
   @UseGuards(EventRoleGuard)
   @EventRoles(...PAPEIS_CHECKIN)
+  @Get("checkin/leituras")
+  listarLeiturasCheckin(@Param("id") eventoId: string) {
+    return this.ticketsService.listarLeiturasCheckin(eventoId);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_CHECKIN)
   @Post("checkin")
   async checkin(@Param("id") eventoId: string, @Body() dto: CheckinDto) {
     const ingresso = await this.ticketsService.checkin(eventoId, dto.qrToken);

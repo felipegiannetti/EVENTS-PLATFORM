@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -157,6 +158,13 @@ export class EventsController {
   async criarLinkVenda(@Param("id") id: string, @Body() dto: CriarLinkVendaDto) {
     const link = await this.eventsService.criarLinkVenda(id, dto.slug, dto.origem);
     return this.linkVendaMapper.toResponse(link);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles("owner")
+  @Get(":id/acesso/usuarios")
+  buscarUsuariosParaAcesso(@Param("id") id: string, @Query("busca") busca = "") {
+    return this.eventsService.buscarUsuariosParaAcesso(id, busca);
   }
 
   @UseGuards(EventRoleGuard)

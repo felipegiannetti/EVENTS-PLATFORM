@@ -77,6 +77,7 @@ export class PrismaLoteRepository implements LoteRepository {
       lote.quantidade,
       lote.quantidadeEmitida,
       lote.especial,
+      lote.oculto,
     );
   }
 }

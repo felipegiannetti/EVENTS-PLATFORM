@@ -40,6 +40,8 @@ import { CupomNaoEncontradoException } from "./exceptions/cupom-nao-encontrado.e
 import { CupomComUsosException } from "./exceptions/cupom-com-usos.exception";
 import { SenhaCupomInvalidaException } from "./exceptions/senha-cupom-invalida.exception";
 import { QuantidadeLoteInvalidaException } from "./exceptions/quantidade-lote-invalida.exception";
+import { PrismaService } from "../infra/prisma/prisma.service";
+import type { UsuarioAcessoSugestao } from "@events-platform/shared-types";
 
 @Injectable()
 export class EventsService {
@@ -52,6 +54,7 @@ export class EventsService {
     @Inject(USUARIO_REPOSITORY) private readonly usuarioRepository: UsuarioRepository,
     @Inject(CUPOM_DESCONTO_REPOSITORY)
     private readonly cupomDescontoRepository: CupomDescontoRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async criarEvento(usuarioId: string, input: CriarEventoInput): Promise<EventoModel> {
@@ -191,6 +194,21 @@ export class EventsService {
   async listarAcessos(eventoId: string): Promise<PapelAcessoModel[]> {
     await this.buscarEvento(eventoId);
     return this.papelAcessoRepository.listarPorEvento(eventoId);
+  }
+
+  async buscarUsuariosParaAcesso(eventoId: string, busca: string): Promise<UsuarioAcessoSugestao[]> {
+    await this.buscarEvento(eventoId);
+    const termo = busca.trim();
+    if (termo.length < 2) return [];
+    return this.prisma.usuario.findMany({
+      where: {
+        email: { contains: termo, mode: "insensitive" },
+        papeisAcesso: { none: { eventoId } },
+      },
+      orderBy: { email: "asc" },
+      take: 8,
+      select: { id: true, nome: true, email: true },
+    });
   }
 
   /** Banner salvo como bytes direto no Postgres — ver docs/architecture/04-modelo-de-dados.md. */

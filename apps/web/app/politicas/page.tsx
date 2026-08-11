@@ -54,9 +54,9 @@ export default function PoliticasPage() {
             pagamento implementado, nenhuma cobrança real é feita.
           </p>
           <p className="mt-3 text-sm leading-6 text-muted">
-            Nem esse adicional de 10%, nem a taxa de serviço normal são reembolsados ao cancelar — é o
-            preço do direito de cancelar até perto do evento, e o direito foi exercido. Só o valor do
-            ingresso em si é elegível a reembolso.
+            Só o adicional de 10% não é reembolsado ao cancelar — é o preço do direito de cancelar até
+            perto do evento, e o direito foi exercido. A taxa de serviço normal, nesse caso, é devolvida
+            junto com o valor do ingresso.
           </p>
         </Card>
 

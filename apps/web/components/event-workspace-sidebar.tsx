@@ -50,12 +50,18 @@ function montarGrupos(eventoId: string): GrupoNav[] {
     {
       label: "Participantes",
       icon: Users,
-      itens: [{ href: `${base}/participantes`, label: "Participantes" }],
+      itens: [
+        { href: `${base}/participantes`, label: "Participantes" },
+        { href: `${base}/lista-off`, label: "Lista off" },
+      ],
     },
     {
       label: "Check-in",
       icon: QrCode,
-      itens: [{ href: `${base}/checkin`, label: "Check-in via scanner" }],
+      itens: [
+        { href: `${base}/checkin`, label: "Check-in via scanner" },
+        { href: `${base}/lista-off/checkin`, label: "Check-in lista off" },
+      ],
     },
     {
       label: "Financeiro",

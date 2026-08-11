@@ -100,7 +100,7 @@ function DetalheOrganizador({ organizador, token, onAtualizado }: { organizador:
 
   const bonusIndicador = organizador.indicado ? (2 - organizador.percentualBeneficioIndicacao) * 0.25 : 0;
   const limiteAdmin = useMemo(
-    () => 12 - organizador.percentualBeneficioIndicacao - (organizador.indicado ? 1 + bonusIndicador : 0),
+    () => 12 - organizador.percentualBeneficioIndicacao - (organizador.indicado ? 0.25 + bonusIndicador : 0),
     [organizador.indicado, organizador.percentualBeneficioIndicacao, bonusIndicador],
   );
   const ativo = organizador.acordos.find((acordo) => acordo.ativo);
@@ -156,7 +156,7 @@ function DetalheOrganizador({ organizador, token, onAtualizado }: { organizador:
         {organizador.indicado && (
           <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm">
             <p className="font-semibold text-primary">Organizador vindo por indicação</p>
-            <p className="mt-1 leading-6 text-muted">Benefício permanente negociado: {organizador.percentualBeneficioIndicacao.toFixed(2)}%. A reserva do indicador no primeiro evento é {(1 + bonusIndicador).toFixed(2)}%; por isso o limite administrativo já foi reduzido automaticamente.</p>
+            <p className="mt-1 leading-6 text-muted">Benefício permanente negociado: {organizador.percentualBeneficioIndicacao.toFixed(2)}%. O indicador recebe {(0.25 + bonusIndicador).toFixed(2)}% em todos os eventos pagos; por isso o limite administrativo já foi reduzido automaticamente.</p>
           </div>
         )}
 

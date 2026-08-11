@@ -7,5 +7,6 @@ export class LoteModel {
     public readonly quantidade: number,
     public readonly quantidadeEmitida: number,
     public readonly especial: boolean,
+    public readonly oculto: boolean,
   ) {}
 }

@@ -82,7 +82,7 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 ### 3.12 Programa de indicação e negociação com organizadores
 - Qualquer usuário pode cadastrar uma conta de recebimento, criar links ilimitados e indicar organizadores ilimitados
 - Cada link negocia um benefício permanente de **0% a 2%** da taxa para o novo organizador
-- O indicador recebe **1% no primeiro evento pago** e **0,25% nos seguintes, para sempre**; evento gratuito não conta
+- O indicador recebe **0,25% em todos os eventos pagos**, desde o primeiro e para sempre; evento gratuito não conta
 - O indicador recebe também 25% da parcela dos 2% que não concedeu ao organizador. Exemplo: concedeu 1%, então ganha bônus de 0,25%
 - O vínculo é criado no registro, aceita apenas um indicador original por conta e mantém o percentual da oferta daquele momento
 - O acordo concedido pelo ADMIN é independente e cumulativo. O motor central impede que a soma ultrapasse os 12% da taxa
@@ -94,7 +94,7 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 
 - **Evento** → tem Lotes, Links de venda, Papéis de acesso (Gestor/View)
 - **Ingresso** → pertence a um Evento e um Lote, tem status (pendente/válido/usado/cancelado — "pendente" é reservado para quando existir checkout assíncrono, ainda não produzido por nenhum fluxo hoje), QR code único, flag de transferível ou não
-- **Lista Off** → CPFs vinculados a um Evento, com status de uso
+- **Lista Off** → listas nomeadas por evento, com horário limite opcional, convidados por nome completo + CPF formatado e status de entrada
 - **Link de venda** → rastreia origem da venda, usado para gerar parcial segmentada
 - **Usuário** → pode ser Organizador, Gestor, View, Operador de check-in, ou Admin geral
 - **Transação** → registro de pagamento (ou gratuidade) vinculado a um Ingresso

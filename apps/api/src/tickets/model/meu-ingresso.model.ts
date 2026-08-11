@@ -24,6 +24,7 @@ export class MeuIngressoModel extends IngressoModel {
       ingresso.cupomDescontoId,
       ingresso.cupomCodigo,
       ingresso.criadoEm,
+      ingresso.usadoEm,
     );
   }
 }

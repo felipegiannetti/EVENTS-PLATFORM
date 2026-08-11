@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { ConvidarAcessoInput, PapelAcessoResponse } from "@events-platform/shared-types";
+import type { ConvidarAcessoInput, PapelAcessoResponse, UsuarioAcessoSugestao } from "@events-platform/shared-types";
 
 type PapelConvidavel = ConvidarAcessoInput["papel"];
 import { ProtectedPage } from "@/components/protected-page";
@@ -13,7 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
 import { useNavigationLoading } from "@/lib/navigation-loading";
-import { convidarAcesso, listarAcessos, removerAcesso } from "@/lib/events-client";
+import { buscarUsuariosParaAcesso, convidarAcesso, listarAcessos, removerAcesso } from "@/lib/events-client";
 
 const PAPEIS_CONVIDAVEIS: { valor: PapelConvidavel; rotulo: string }[] = [
   { valor: "gestor", rotulo: "Gestor (edita o evento)" },
@@ -37,6 +37,8 @@ function GestaoAcesso({ token }: { token: string }) {
   const [papel, setPapel] = useState<PapelConvidavel>("gestor");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [sugestoes, setSugestoes] = useState<UsuarioAcessoSugestao[]>([]);
+  const [buscandoSugestoes, setBuscandoSugestoes] = useState(false);
 
   async function recarregar() {
     setAcessos(await listarAcessos(id, token));
@@ -49,6 +51,22 @@ function GestaoAcesso({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token]);
 
+  useEffect(() => {
+    const termo = email.trim();
+    if (termo.length < 2) {
+      setSugestoes([]);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setBuscandoSugestoes(true);
+      buscarUsuariosParaAcesso(id, termo, token)
+        .then(setSugestoes)
+        .catch(() => setSugestoes([]))
+        .finally(() => setBuscandoSugestoes(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [email, id, token]);
+
   async function onConvidar(e: FormEvent) {
     e.preventDefault();
     setErro(null);
@@ -56,6 +74,7 @@ function GestaoAcesso({ token }: { token: string }) {
     try {
       await convidarAcesso(id, { usuarioEmail: email, papel }, token);
       setEmail("");
+      setSugestoes([]);
       await recarregar();
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível convidar esse usuário.");
@@ -82,30 +101,23 @@ function GestaoAcesso({ token }: { token: string }) {
         que o papel dele permite.
       </p>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        {acessos?.map((acesso) => (
-          <Card key={acesso.usuarioId} className="flex items-center justify-between p-5 hover:border-primary/20">
-            <div>
-              <p className="font-medium text-foreground">{acesso.usuarioNome}</p>
-              <p className="text-sm text-muted">{acesso.usuarioEmail}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold capitalize text-primary">
-                {acesso.papel === "checkin_operator" ? "check-in" : acesso.papel}
-              </span>
-              {acesso.papel !== "owner" && (
-                <button
-                  type="button"
-                  onClick={() => onRemover(acesso.usuarioId)}
-                  className="text-sm text-danger hover:underline"
-                >
-                  Remover
-                </button>
-              )}
-            </div>
-          </Card>
-        ))}
-        {acessos === null && <p className="text-sm text-muted">Carregando...</p>}
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-border/10 bg-card shadow-card">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="border-b border-border/10 text-[10px] font-bold uppercase tracking-wider text-muted">
+            <tr><th className="px-5 py-3">Pessoa</th><th className="px-5 py-3">Email</th><th className="px-5 py-3">Permissão</th><th className="px-5 py-3 text-right">Ação</th></tr>
+          </thead>
+          <tbody>
+            {acessos?.map((acesso) => (
+              <tr key={acesso.usuarioId} className="border-b border-border/10 last:border-0">
+                <td className="px-5 py-4 font-semibold text-foreground">{acesso.usuarioNome}</td>
+                <td className="px-5 py-4 text-muted">{acesso.usuarioEmail}</td>
+                <td className="px-5 py-4"><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{rotuloPapel(acesso.papel)}</span></td>
+                <td className="px-5 py-4 text-right">{acesso.papel !== "owner" ? <button type="button" onClick={() => onRemover(acesso.usuarioId)} className="text-sm font-semibold text-danger hover:underline">Remover</button> : <span className="text-xs text-muted">Responsável</span>}</td>
+              </tr>
+            ))}
+            {acessos === null && <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-muted">Carregando...</td></tr>}
+          </tbody>
+        </table>
       </div>
 
       <Card className="mt-8 p-7">
@@ -113,7 +125,7 @@ function GestaoAcesso({ token }: { token: string }) {
           Convidar alguém
         </h2>
         <form onSubmit={onConvidar} className="mt-5 flex flex-wrap items-end gap-3">
-          <div className="min-w-52 flex-1">
+          <div className="relative min-w-52 flex-1">
             <Input
               id="email-convite"
               label="Email da pessoa"
@@ -121,7 +133,17 @@ function GestaoAcesso({ token }: { token: string }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="off"
             />
+            {(sugestoes.length > 0 || buscandoSugestoes) && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-border/15 bg-card shadow-xl">
+                {buscandoSugestoes && sugestoes.length === 0 ? <p className="px-4 py-3 text-xs text-muted">Buscando usuários...</p> : sugestoes.map((usuario) => (
+                  <button key={usuario.id} type="button" onClick={() => { setEmail(usuario.email); setSugestoes([]); }} className="flex w-full items-center justify-between gap-4 border-b border-border/10 px-4 py-3 text-left last:border-0 hover:bg-primary/5">
+                    <span className="text-sm font-semibold text-foreground">{usuario.nome}</span><span className="text-xs text-muted">{usuario.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="min-w-40">
             <Select
@@ -164,4 +186,11 @@ function GestaoAcesso({ token }: { token: string }) {
       )}
     </main>
   );
+}
+
+function rotuloPapel(papel: PapelAcessoResponse["papel"]) {
+  if (papel === "owner") return "Organizador responsável";
+  if (papel === "gestor") return "Gestor · pode editar";
+  if (papel === "view") return "Visualizador · somente leitura";
+  return "Operador de check-in";
 }

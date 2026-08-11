@@ -97,3 +97,10 @@ export const convidarAcessoSchema = z.object({
   papel: z.enum(PAPEL_EVENTO).exclude(["owner"]),
 });
 export type ConvidarAcessoInput = z.infer<typeof convidarAcessoSchema>;
+
+export const usuarioAcessoSugestaoSchema = z.object({
+  id: z.string().uuid(),
+  nome: z.string(),
+  email: z.string().email(),
+});
+export type UsuarioAcessoSugestao = z.infer<typeof usuarioAcessoSugestaoSchema>;

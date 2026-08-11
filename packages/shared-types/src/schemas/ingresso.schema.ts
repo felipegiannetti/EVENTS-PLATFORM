@@ -35,6 +35,7 @@ export const ingressoResponseSchema = z.object({
   /** Código do cupom usado nesta emissão (join com CupomDesconto), ou null se nenhum foi usado. */
   cupomCodigo: z.string().nullable(),
   criadoEm: z.string().datetime(),
+  usadoEm: z.string().datetime().nullable(),
 });
 export type IngressoResponse = z.infer<typeof ingressoResponseSchema>;
 
@@ -54,6 +55,14 @@ export const checkinSchema = z.object({
   qrToken: z.string().min(1),
 });
 export type CheckinInput = z.infer<typeof checkinSchema>;
+
+export const leituraCheckinResponseSchema = z.object({
+  ingressoId: z.string().uuid(),
+  compradorNome: z.string().nullable(),
+  compradorEmail: z.string().nullable(),
+  usadoEm: z.string().datetime(),
+});
+export type LeituraCheckinResponse = z.infer<typeof leituraCheckinResponseSchema>;
 
 /** O organizador só escreve o corpo — assunto e cabeçalho/rodapé (evento + data + "enviado pelo organizador") são fixos no backend, ver TicketsService.enviarEmailParticipantes. */
 export const enviarEmailParticipantesSchema = z.object({

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ImagePlus, Sparkles } from "lucide-react";
+import { ImagePlus, Sparkles, X } from "lucide-react";
 import {
   CATEGORIA_EVENTO,
   ROTULO_CATEGORIA_EVENTO,
@@ -67,6 +67,7 @@ function FormularioDetalhes({ token }: { token: string }) {
 
   const [enviandoBanner, setEnviandoBanner] = useState(false);
   const [versaoBanner, setVersaoBanner] = useState(0);
+  const [bannerAmpliado, setBannerAmpliado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [carregandoCidades, setCarregandoCidades] = useState(false);
@@ -303,6 +304,7 @@ function FormularioDetalhes({ token }: { token: string }) {
                     <img
                       src={`${urlBannerEvento(id)}?v=${versaoBanner}`}
                       alt="Banner do evento"
+                      onClick={(e) => { e.preventDefault(); setBannerAmpliado(true); }}
                       className="h-full w-full object-cover transition-opacity group-hover:opacity-70"
                     />
                   ) : (
@@ -332,6 +334,7 @@ function FormularioDetalhes({ token }: { token: string }) {
                 <img
                   src={`${urlBannerEvento(id)}?v=${versaoBanner}`}
                   alt="Banner do evento"
+                  onClick={(e) => { e.preventDefault(); setBannerAmpliado(true); }}
                   className="h-full w-full object-cover transition-opacity group-hover:opacity-70"
                 />
               ) : (
@@ -398,6 +401,13 @@ function FormularioDetalhes({ token }: { token: string }) {
           </Link>
         )}
       </Card>
+      {bannerAmpliado && evento?.temBanner && (
+        <div role="dialog" aria-modal="true" aria-label="Banner do evento em tamanho ampliado" className="fixed inset-0 z-[70] grid place-items-center bg-black/85 p-4" onClick={() => setBannerAmpliado(false)}>
+          <button type="button" aria-label="Fechar imagem" onClick={() => setBannerAmpliado(false)} className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white backdrop-blur hover:bg-white/20"><X size={22} /></button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${urlBannerEvento(id)}?v=${versaoBanner}`} alt="Banner completo do evento" onClick={(e) => e.stopPropagation()} className="max-h-[88vh] max-w-[94vw] rounded-2xl object-contain shadow-2xl" />
+        </div>
+      )}
     </main>
   );
 }

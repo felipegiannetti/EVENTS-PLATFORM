@@ -7,20 +7,22 @@ import { Camera, CheckCircle2, ScanLine, Search, XCircle } from "lucide-react";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Pagination, ITENS_POR_PAGINA } from "@/components/ui/pagination";
+import { Pagination } from "@/components/ui/pagination";
 import { ApiError } from "@/lib/api-client";
-import { checkin } from "@/lib/tickets-client";
+import { checkin, listarLeiturasCheckin } from "@/lib/tickets-client";
 
 interface LeituraResultado {
   id: string;
   ok: boolean;
   nome: string | null;
+  email: string | null;
   mensagem: string;
   horario: string;
 }
 
 /** Trava em 500 pra não crescer sem limite numa sessão de check-in muito longa — bem acima do que qualquer evento real deveria gerar num único plantão. */
 const MAXIMO_LEITURAS_EM_MEMORIA = 500;
+const LEITURAS_POR_PAGINA = 15;
 
 export default function CheckinEventoPage() {
   return <ProtectedPage>{(token) => <PainelCheckin token={token} />}</ProtectedPage>;
@@ -49,6 +51,16 @@ function PainelCheckin({ token }: { token: string }) {
 
   useEffect(() => {
     inputRef.current?.focus();
+    listarLeiturasCheckin(id, token)
+      .then((leituras) => setResultados(leituras.slice(0, MAXIMO_LEITURAS_EM_MEMORIA).map((leitura) => ({
+        id: leitura.ingressoId,
+        ok: true,
+        nome: leitura.compradorNome,
+        email: leitura.compradorEmail,
+        mensagem: "Check-in confirmado",
+        horario: new Date(leitura.usadoEm).toLocaleString("pt-BR"),
+      }))))
+      .catch(() => undefined);
     return () => desligarCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,9 +72,9 @@ function PainelCheckin({ token }: { token: string }) {
     try {
       const ingresso = await checkin(id, qrToken.trim(), token);
       const nome = ingresso.compradorNome ?? ingresso.compradorEmail;
-      registrarResultado(true, nome, nome ? `Check-in confirmado — ${nome}` : `Check-in confirmado — ingresso ${ingresso.id.slice(0, 8)}...`);
+      registrarResultado(true, ingresso.compradorNome, ingresso.compradorEmail, nome ? "Check-in confirmado" : `Check-in confirmado — ingresso ${ingresso.id.slice(0, 8)}...`);
     } catch (err) {
-      registrarResultado(false, null, err instanceof ApiError ? err.message : "Não foi possível validar esse código.");
+      registrarResultado(false, null, null, err instanceof ApiError ? err.message : "Não foi possível validar esse código.");
     } finally {
       processandoRef.current = false;
       setProcessando(false);
@@ -71,10 +83,10 @@ function PainelCheckin({ token }: { token: string }) {
     }
   }
 
-  function registrarResultado(ok: boolean, nome: string | null, mensagem: string) {
+  function registrarResultado(ok: boolean, nome: string | null, email: string | null, mensagem: string) {
     setPaginaValidados(1);
     setResultados((atual) => [
-      { id: crypto.randomUUID(), ok, nome, mensagem, horario: new Date().toLocaleTimeString("pt-BR") },
+      { id: crypto.randomUUID(), ok, nome, email, mensagem, horario: new Date().toLocaleString("pt-BR") },
       ...atual.slice(0, MAXIMO_LEITURAS_EM_MEMORIA - 1),
     ]);
   }
@@ -144,15 +156,16 @@ function PainelCheckin({ token }: { token: string }) {
     return resultados.filter(
       (resultado) =>
         (resultado.nome ?? "").toLocaleLowerCase("pt-BR").includes(termo) ||
+        (resultado.email ?? "").toLocaleLowerCase("pt-BR").includes(termo) ||
         resultado.mensagem.toLocaleLowerCase("pt-BR").includes(termo),
     );
   }, [resultados, buscaValidados]);
 
-  const totalPaginasValidados = Math.max(1, Math.ceil(resultadosFiltrados.length / ITENS_POR_PAGINA));
+  const totalPaginasValidados = Math.max(1, Math.ceil(resultadosFiltrados.length / LEITURAS_POR_PAGINA));
   const paginaValidadosAtual = Math.min(paginaValidados, totalPaginasValidados);
   const resultadosPaginados = resultadosFiltrados.slice(
-    (paginaValidadosAtual - 1) * ITENS_POR_PAGINA,
-    paginaValidadosAtual * ITENS_POR_PAGINA,
+    (paginaValidadosAtual - 1) * LEITURAS_POR_PAGINA,
+    paginaValidadosAtual * LEITURAS_POR_PAGINA,
   );
 
   return (
@@ -211,25 +224,29 @@ function PainelCheckin({ token }: { token: string }) {
                 setBuscaValidados(e.target.value);
                 setPaginaValidados(1);
               }}
-              placeholder="Buscar por nome do participante..."
+              placeholder="Buscar por nome ou email do ingresso..."
               className="h-11 w-full rounded-xl border border-border/15 bg-background/60 pl-11 pr-4 text-sm text-foreground outline-none focus:border-primary"
             />
           </div>
         )}
 
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-border/10 bg-card shadow-card">
           {resultadosPaginados.map((resultado) => (
-            <Card key={resultado.id} className="flex items-center justify-between gap-3 p-4">
-              <div className="flex items-center gap-3">
+            <div key={resultado.id} className="flex items-center justify-between gap-4 border-b border-border/10 px-5 py-4 last:border-0">
+              <div className="flex min-w-0 items-center gap-3">
                 {resultado.ok ? <CheckCircle2 size={18} className="text-success" /> : <XCircle size={18} className="text-danger" />}
-                <p className={`text-sm ${resultado.ok ? "text-foreground" : "text-danger"}`}>{resultado.mensagem}</p>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${resultado.ok ? "text-foreground" : "text-danger"}`}>{resultado.nome ?? resultado.mensagem}</p>
+                  {resultado.email && <p className="truncate text-xs text-muted">{resultado.email}</p>}
+                  {resultado.ok && <p className="text-xs text-success">{resultado.mensagem}</p>}
+                </div>
               </div>
-              <span className="text-xs text-muted">{resultado.horario}</span>
-            </Card>
+              <span className="shrink-0 text-xs text-muted">{resultado.horario}</span>
+            </div>
           ))}
-          {resultados.length === 0 && <p className="text-sm text-muted">Nenhuma leitura ainda.</p>}
+          {resultados.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">Nenhuma leitura ainda.</p>}
           {resultados.length > 0 && resultadosFiltrados.length === 0 && (
-            <p className="text-sm text-muted">Nenhuma leitura encontrada para essa busca.</p>
+            <p className="px-5 py-8 text-center text-sm text-muted">Nenhuma leitura encontrada para essa busca.</p>
           )}
         </div>
 

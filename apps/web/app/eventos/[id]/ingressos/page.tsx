@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
-import { Pencil, Plus, Search, Ticket } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Search, Ticket } from "lucide-react";
 import type { CupomDescontoResponse, IngressoResponse, LoteResponse } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
@@ -144,6 +144,7 @@ function ModalEditarLote({
   const [nome, setNome] = useState(lote.nome);
   const [precoCentavos, setPrecoCentavos] = useState(Math.round(lote.preco * 100));
   const [quantidade, setQuantidade] = useState(String(lote.quantidade));
+  const [oculto, setOculto] = useState(lote.oculto);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -152,7 +153,7 @@ function ModalEditarLote({
     setErro(null);
     setSalvando(true);
     try {
-      await atualizarLote(eventoId, lote.id, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade) }, token);
+      await atualizarLote(eventoId, lote.id, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade), oculto }, token);
       await onSalvo();
       onFechar();
     } catch (err) {
@@ -181,6 +182,10 @@ function ModalEditarLote({
           {quantidade !== "" && Number(quantidade) < lote.quantidadeEmitida && (
             <p className="text-xs text-danger">Já foram emitidos {lote.quantidadeEmitida} ingressos — não dá pra reduzir abaixo disso.</p>
           )}
+          <label className="flex items-start gap-3 rounded-xl border border-border/15 bg-background/60 px-4 py-3">
+            <input type="checkbox" checked={oculto} onChange={(e) => setOculto(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+            <span className="text-sm text-foreground">Ocultar lote dos compradores<span className="mt-0.5 block text-xs text-muted">Ingressos e histórico existentes são preservados.</span></span>
+          </label>
           {erro && <p className="text-sm text-danger">{erro}</p>}
           <div className="mt-2 flex gap-3">
             <Button type="button" variant="secondary" onClick={onFechar} className="flex-1" disabled={salvando}>
@@ -299,6 +304,7 @@ function PainelIngressos({ token }: { token: string }) {
                         Especial
                       </span>
                     )}
+                    {lote.oculto && <span className="ml-2 rounded-full bg-muted/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">Oculto</span>}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -313,6 +319,15 @@ function PainelIngressos({ token }: { token: string }) {
                   <td className="px-5 py-4 text-foreground">{lote.preco > 0 ? formatarReais(lote.preco) : "Gratuito"}</td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => { try { await atualizarLote(id, lote.id, { oculto: !lote.oculto }, token); await recarregar(); } catch (err) { setErro(err instanceof ApiError ? err.message : "Não foi possível alterar a visibilidade do lote."); } }}
+                        aria-label={lote.oculto ? "Desocultar lote" : "Ocultar lote"}
+                        title={lote.oculto ? "Desocultar lote" : "Ocultar lote"}
+                        className="grid h-9 w-9 place-items-center rounded-lg border border-border/15 text-muted hover:border-primary/30 hover:text-primary"
+                      >
+                        {lote.oculto ? <Eye size={15} /> : <EyeOff size={15} />}
+                      </button>
                       <button
                         type="button"
                         onClick={() => setLoteParaEditar(lote)}
@@ -392,7 +407,7 @@ function FormularioLote({
     setErro(null);
     setEnviando(true);
     try {
-      await criarLote(eventoId, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade), especial }, token);
+      await criarLote(eventoId, { nome, preco: precoCentavos / 100, quantidade: Number(quantidade), especial, oculto: false }, token);
       setNome("");
       setPrecoCentavos(0);
       setQuantidade("100");

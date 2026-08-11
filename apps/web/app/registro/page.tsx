@@ -97,7 +97,7 @@ function FormularioRegistro() {
             <p className="flex items-center gap-2 text-sm font-bold text-primary"><Gift size={16} /> Convite de indicação ativo</p>
             <p className="mt-1 text-xs leading-5 text-muted">
               {ofertaIndicacao
-                ? `${ofertaIndicacao.indicadorNome} convidou você. Ao organizar eventos pagos, você receberá permanentemente ${ofertaIndicacao.percentualBeneficioOrganizador.toFixed(2)}% adicional da taxa da plataforma.`
+                ? `${ofertaIndicacao.indicadorNome} convidou você. Você receberá permanentemente ${ofertaIndicacao.percentualBeneficioOrganizador.toFixed(2)}% adicional da taxa da plataforma nos eventos que organizar que possuírem ingressos pagos na plataforma.`
                 : "Validaremos este convite ao criar sua conta."}
             </p>
           </div>

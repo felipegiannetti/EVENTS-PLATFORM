@@ -12,6 +12,7 @@ import { TicketsModule } from "./tickets/tickets.module";
 import { FinanceModule } from "./finance/finance.module";
 import { ReferralsModule } from "./referrals/referrals.module";
 import { AdminModule } from "./admin/admin.module";
+import { GuestlistModule } from "./guestlist/guestlist.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AdminModule } from "./admin/admin.module";
     FinanceModule,
     ReferralsModule,
     AdminModule,
+    GuestlistModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

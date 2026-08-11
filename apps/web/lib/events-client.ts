@@ -12,6 +12,7 @@ import type {
   LinkVendaResponse,
   LoteResponse,
   PapelAcessoResponse,
+  UsuarioAcessoSugestao,
 } from "@events-platform/shared-types";
 type AtualizarLoteInput = Partial<CriarLoteInput>;
 import { ApiError, apiFetch } from "./api-client";
@@ -97,6 +98,14 @@ export function criarLinkVenda(eventoId: string, input: CriarLinkVendaInput, tok
 
 export function listarAcessos(eventoId: string, token: string) {
   return apiFetch<PapelAcessoResponse[]>(`/events/${eventoId}/acesso`, {}, token);
+}
+
+export function buscarUsuariosParaAcesso(eventoId: string, busca: string, token: string) {
+  return apiFetch<UsuarioAcessoSugestao[]>(
+    `/events/${eventoId}/acesso/usuarios?busca=${encodeURIComponent(busca)}`,
+    {},
+    token,
+  );
 }
 
 export function convidarAcesso(eventoId: string, input: ConvidarAcessoInput, token: string) {

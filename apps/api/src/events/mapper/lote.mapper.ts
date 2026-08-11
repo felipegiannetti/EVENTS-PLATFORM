@@ -13,6 +13,7 @@ export class LoteMapper {
       quantidade: model.quantidade,
       quantidadeEmitida: model.quantidadeEmitida,
       especial: model.especial,
+      oculto: model.oculto,
     };
   }
 }

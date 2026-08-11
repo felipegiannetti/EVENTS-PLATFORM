@@ -21,6 +21,7 @@ export class IngressoMapper {
       destinatarioTransferenciaEmail: model.destinatarioTransferenciaEmail,
       cupomCodigo: model.cupomCodigo,
       criadoEm: model.criadoEm.toISOString(),
+      usadoEm: model.usadoEm?.toISOString() ?? null,
     };
   }
 

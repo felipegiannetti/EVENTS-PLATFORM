@@ -11,7 +11,6 @@ export interface PartesProgramaIndicacao {
 
 export function calcularPartesProgramaIndicacao(
   percentualBeneficioOrganizador: number | null,
-  primeiroEventoPago: boolean,
 ): PartesProgramaIndicacao {
   if (percentualBeneficioOrganizador === null) {
     return {
@@ -22,7 +21,7 @@ export function calcularPartesProgramaIndicacao(
     };
   }
   const beneficio = Math.min(BENEFICIO_MAXIMO_INDICACAO_ORGANIZADOR, Math.max(0, percentualBeneficioOrganizador));
-  const base = primeiroEventoPago ? 1 : 0.25;
+  const base = 0.25;
   const bonus = (BENEFICIO_MAXIMO_INDICACAO_ORGANIZADOR - beneficio) * BONUS_ECONOMIA_INDICADOR;
   return {
     percentualBeneficioOrganizador: beneficio,
@@ -33,6 +32,6 @@ export function calcularPartesProgramaIndicacao(
 }
 
 export function percentualMaximoAcordoAdmin(percentualBeneficioOrganizador: number | null): number {
-  const programa = calcularPartesProgramaIndicacao(percentualBeneficioOrganizador, true);
+  const programa = calcularPartesProgramaIndicacao(percentualBeneficioOrganizador);
   return TAXA_SERVICO_PERCENTUAL - programa.percentualBeneficioOrganizador - programa.percentualTotalIndicador;
 }

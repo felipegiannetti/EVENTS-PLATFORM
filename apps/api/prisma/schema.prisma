@@ -93,15 +93,16 @@ model Usuario {
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
-  papeisAcesso       PapelAcesso[]
-  refreshTokens      RefreshToken[]
-  auditLogs          AuditLog[]
-  acordosComerciais  AcordoComercial[]  @relation("AcordoComercialOrganizador")
-  acordosDefinidos   AcordoComercial[]  @relation("AcordoComercialAdmin")
-  programaIndicacao  ProgramaIndicacao?
-  indicacoesFeitas   Indicacao[]        @relation("IndicadorIndicacao")
-  indicacaoRecebida  Indicacao?         @relation("IndicadoIndicacao")
-  eventosOrganizados Evento[]           @relation("EventoOrganizador")
+  papeisAcesso              PapelAcesso[]
+  refreshTokens             RefreshToken[]
+  auditLogs                 AuditLog[]
+  acordosComerciais         AcordoComercial[]          @relation("AcordoComercialOrganizador")
+  acordosDefinidos          AcordoComercial[]          @relation("AcordoComercialAdmin")
+  programaIndicacao         ProgramaIndicacao?
+  solicitacaoContaIndicacao SolicitacaoContaIndicacao?
+  indicacoesFeitas          Indicacao[]                @relation("IndicadorIndicacao")
+  indicacaoRecebida         Indicacao?                 @relation("IndicadoIndicacao")
+  eventosOrganizados        Evento[]                   @relation("EventoOrganizador")
 
   @@map("usuarios")
 }
@@ -188,10 +189,10 @@ model Evento {
   papeisAcesso       PapelAcesso[]
   ingressos          Ingresso[]
   listaOff           ListaOff[]
+  listasOff          ListaOffGrupo[]
   acordosComerciais  AcordoComercial[]
   contaBancaria      ContaBancaria?
   cupons             CupomDesconto[]
-  primeiraIndicacao  Indicacao?          @relation("PrimeiroEventoPagoIndicacao")
   comissoesIndicacao ComissaoIndicacao[]
 
   @@map("eventos")
@@ -266,6 +267,7 @@ model Lote {
   vagasReservadas   Int      @default(0)
   /// Lote especial/privado — pensado pra só ficar visível/comprável através de um cupom especial com senha.
   especial          Boolean  @default(false)
+  oculto            Boolean  @default(false)
   criadoEm          DateTime @default(now())
 
   ingressos Ingresso[]
@@ -335,6 +337,7 @@ model Ingresso {
   /// pra virar o novo compradorEmail. Nunca coexiste com o ingresso sendo 'valido'.
   destinatarioTransferenciaEmail String?
   criadoEm                       DateTime       @default(now())
+  usadoEm                        DateTime?
   atualizadoEm                   DateTime       @updatedAt
 
   transacao Transacao?
@@ -357,16 +360,39 @@ model Transacao {
   @@map("transacoes")
 }
 
-model ListaOff {
-  id        String    @id @default(uuid())
-  eventoId  String
-  evento    Evento    @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-  cpf       String
-  statusUso Boolean   @default(false)
-  usadoEm   DateTime?
-  criadoEm  DateTime  @default(now())
+model ListaOffGrupo {
+  id           String     @id @default(uuid())
+  eventoId     String
+  evento       Evento     @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  nome         String
+  entradaAte   DateTime?
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+  pessoas      ListaOff[]
 
-  @@unique([eventoId, cpf])
+  @@unique([eventoId, nome])
+  @@index([eventoId])
+  @@map("listas_off_grupos")
+}
+
+model ListaOff {
+  id           String        @id @default(uuid())
+  eventoId     String
+  evento       Evento        @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  listaId      String
+  lista        ListaOffGrupo @relation(fields: [listaId], references: [id], onDelete: Cascade)
+  nomeCompleto String
+  cpf          String
+  cpfDigitos   String
+  statusUso    Boolean       @default(false)
+  usadoEm      DateTime?
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+
+  @@unique([listaId, cpfDigitos])
+  @@index([eventoId])
+  @@index([listaId, nomeCompleto])
+  @@index([listaId, cpfDigitos])
   @@map("lista_off")
 }
 
@@ -435,6 +461,24 @@ model ProgramaIndicacao {
   @@map("programas_indicacao")
 }
 
+model SolicitacaoContaIndicacao {
+  id               String            @id @default(uuid())
+  usuarioId        String            @unique
+  usuario          Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  banco            String
+  agencia          String
+  conta            String
+  tipoConta        TipoContaBancaria
+  titular          String
+  documentoTitular String
+  tokenHash        String            @unique
+  expiraEm         DateTime
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  @@map("solicitacoes_conta_indicacao")
+}
+
 /// Cada oferta gera um link próprio e guarda a porcentagem vitalícia negociada para o organizador
 /// indicado (0% a 2%). Um indicador pode criar ofertas/links ilimitados.
 model OfertaIndicacao {
@@ -463,8 +507,6 @@ model Indicacao {
   ofertaId                       String
   oferta                         OfertaIndicacao @relation(fields: [ofertaId], references: [id], onDelete: Restrict)
   percentualBeneficioOrganizador Decimal         @db.Decimal(4, 2)
-  primeiroEventoPagoId           String?         @unique
-  primeiroEventoPago             Evento?         @relation("PrimeiroEventoPagoIndicacao", fields: [primeiroEventoPagoId], references: [id], onDelete: SetNull)
   criadoEm                       DateTime        @default(now())
 
   comissoes ComissaoIndicacao[]

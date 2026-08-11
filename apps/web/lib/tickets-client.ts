@@ -1,4 +1,4 @@
-import type { AtualizarIngressoInput, EmitirIngressoInput, IngressoResponse, MeuIngressoResponse } from "@events-platform/shared-types";
+import type { AtualizarIngressoInput, EmitirIngressoInput, IngressoResponse, LeituraCheckinResponse, MeuIngressoResponse } from "@events-platform/shared-types";
 import { ApiError, apiFetch } from "./api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -48,6 +48,10 @@ export function checkin(eventoId: string, qrToken: string, token: string) {
     { method: "POST", body: JSON.stringify({ qrToken }) },
     token,
   );
+}
+
+export function listarLeiturasCheckin(eventoId: string, token: string) {
+  return apiFetch<LeituraCheckinResponse[]>(`/events/${eventoId}/checkin/leituras`, {}, token);
 }
 
 /** CSV precisa do Authorization header, então não dá pra ser um <a href> simples — baixa via fetch e dispara o download por um <a> temporário. */

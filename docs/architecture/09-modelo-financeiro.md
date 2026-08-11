@@ -30,12 +30,13 @@ Registrado como regra de negócio futura em [12-pagamentos-e-repasses.md#43](12-
 
 ## Programa de indicação (referral) — implementado no produto, aguardando liquidação real
 
-- Qualquer usuário cadastrado pode ativar o programa em `/indicacoes`. Na ativação, confirma a senha e cadastra a conta bancária que receberá as futuras comissões; os dados sensíveis são criptografados no banco.
+- Qualquer usuário cadastrado pode ativar o programa em `/indicacoes`. A conta bancária é enviada para confirmação pelo email do cadastro; os dados sensíveis ficam criptografados e a conta só passa a valer depois do clique no link de 24 horas. Alterações seguem o mesmo fluxo e não substituem a conta ativa antes da confirmação.
 - Um indicador pode criar **ofertas ilimitadas** e indicar **organizadores ilimitados**. Cada oferta gera um código aleatório e pode negociar uma porcentagem diferente para o novo organizador.
+- Uma oferta pode ser editada ou removida enquanto nunca tiver sido usada. Após a primeira indicação, recebe status **utilizado**, continua compartilhável e pode acumular novos indicados, mas a negociação fica imutável para preservar o histórico.
 - A oferta define um benefício permanente entre **0% e 2%** para o organizador indicado. A porcentagem é copiada para `Indicacao` no cadastro, portanto alterar ou desativar a oferta depois não muda relações já formadas.
 - O vínculo nasce exclusivamente no registro por `/registro?ref=CODIGO`, é permanente, e cada conta indicada aceita no máximo um indicador original. Não há atribuição retroativa.
-- Eventos gratuitos não entram em nenhuma contagem. Para eventos pagos, o indicador recebe **1% no primeiro evento pago** do organizador e **0,25% em todos os seguintes, para sempre**.
-- Se negociar menos de 2% para o organizador, o indicador recebe ainda **25% da parte não concedida**: `bonusIndicador = (2% - beneficioOrganizador) × 25%`. Exemplo: benefício de 1% deixa 1% não concedido; o bônus é 0,25%. Nesse caso, o indicador recebe 1,25% no primeiro evento e 0,50% nos seguintes.
+- Eventos gratuitos não entram em nenhuma contagem. Em **todos os eventos pagos**, desde o primeiro e para sempre, o indicador recebe **0,25% fixos**.
+- Se negociar menos de 2% para o organizador, o indicador recebe ainda **25% da parte não concedida**: `bonusIndicador = (2% - beneficioOrganizador) × 25%`. Exemplo: benefício de 1% deixa 1% não concedido; o bônus é 0,25%. Nesse caso, o indicador recebe 0,50% em todos os eventos pagos desse organizador.
 - O benefício negociado é do organizador; a comissão-base e o bônus são do indicador. O organizador não recebe a comissão do programa e o indicador não assume o acordo comercial do ADMIN.
 
 ### Convivência com o acordo do ADMIN
@@ -44,18 +45,18 @@ Os mecanismos são cumulativos e independentes dentro dos mesmos 12%:
 
 `12% = acordo ADMIN para organizador + benefício referral para organizador + base do indicador + bônus do indicador + parcela líquida da plataforma`
 
-O ADMIN pode conceder uma parcela para sempre, aos próximos N eventos pagos ou a um evento específico. Ao salvar, a API calcula o máximo seguro considerando o pior caso do referral — o primeiro evento, quando a base do indicador é 1% — e rejeita qualquer acordo que faça a soma ultrapassar 12%. Eventos gratuitos também não consomem o contador de “próximos N”. Um novo acordo ativo desativa o anterior, preservando o histórico e registrando a ação em `AuditLog`.
+O ADMIN pode conceder uma parcela para sempre, aos próximos N eventos pagos ou a um evento específico. Ao salvar, a API reserva os 0,25% fixos e o bônus do indicador e rejeita qualquer acordo que faça a soma ultrapassar 12%. Eventos gratuitos também não consomem o contador de “próximos N”. Um novo acordo ativo desativa o anterior, preservando o histórico e registrando a ação em `AuditLog`.
 
 Exemplo com benefício referral de 1% e acordo ADMIN de 4%:
 
-| Destino | Primeiro evento pago | Eventos seguintes |
-|---|---:|---:|
-| Organizador — acordo ADMIN | 4,00% | 4,00% |
-| Organizador — benefício referral | 1,00% | 1,00% |
-| Indicador — base | 1,00% | 0,25% |
-| Indicador — bônus | 0,25% | 0,25% |
-| Plataforma — residual | 5,75% | 6,50% |
-| **Total** | **12,00%** | **12,00%** |
+| Destino | Todos os eventos pagos |
+|---|---:|
+| Organizador — acordo ADMIN | 4,00% |
+| Organizador — benefício referral | 1,00% |
+| Indicador — base fixa | 0,25% |
+| Indicador — bônus | 0,25% |
+| Plataforma — residual | 6,50% |
+| **Total** | **12,00%** |
 
 O painel do indicador e o resumo do evento deixam os números como **estimativas**. Quando o gateway existir, cada `Transacao` confirmada deverá gerar uma `ComissaoIndicacao` por chave idempotente e o split terá os destinos do organizador, indicador e plataforma; até lá não existe saldo disponível nem alegação de pagamento.
 

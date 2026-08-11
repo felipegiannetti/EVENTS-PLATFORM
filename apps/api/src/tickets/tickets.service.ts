@@ -121,7 +121,7 @@ export class TicketsService {
    */
   async reservar(eventoId: string, loteId: string, compradorEmail?: string): Promise<ReservaModel> {
     const lote = await this.loteRepository.buscarPorId(loteId);
-    if (!lote || lote.eventoId !== eventoId) {
+    if (!lote || lote.eventoId !== eventoId || lote.oculto) {
       throw new LoteNaoEncontradoException();
     }
 
@@ -536,6 +536,19 @@ export class TicketsService {
       throw new IngressoNaoEncontradoException();
     }
     return ingresso;
+  }
+
+  async listarLeiturasCheckin(eventoId: string) {
+    const ingressos = await this.ingressoRepository.listarPorEvento(eventoId);
+    return ingressos
+      .filter((ingresso) => ingresso.status === "usado" && ingresso.usadoEm)
+      .sort((a, b) => b.usadoEm!.getTime() - a.usadoEm!.getTime())
+      .map((ingresso) => ({
+        ingressoId: ingresso.id,
+        compradorNome: ingresso.compradorNome,
+        compradorEmail: ingresso.compradorEmail,
+        usadoEm: ingresso.usadoEm!.toISOString(),
+      }));
   }
 
   /**

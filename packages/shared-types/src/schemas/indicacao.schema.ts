@@ -1,9 +1,7 @@
 import { z } from "zod";
 import { cadastrarContaBancariaSchema } from "./conta-bancaria.schema";
 
-export const criarProgramaIndicacaoSchema = cadastrarContaBancariaSchema.extend({
-  senhaAtual: z.string().min(1),
-});
+export const criarProgramaIndicacaoSchema = cadastrarContaBancariaSchema;
 export type CriarProgramaIndicacaoInput = z.infer<typeof criarProgramaIndicacaoSchema>;
 
 export const criarOfertaIndicacaoSchema = z.object({
@@ -16,6 +14,8 @@ export const ofertaIndicacaoResponseSchema = z.object({
   codigo: z.string(),
   percentualBeneficioOrganizador: z.number(),
   ativo: z.boolean(),
+  utilizado: z.boolean(),
+  totalUtilizacoes: z.number().int().nonnegative(),
   criadoEm: z.string().datetime(),
 });
 export type OfertaIndicacaoResponse = z.infer<typeof ofertaIndicacaoResponseSchema>;
@@ -35,7 +35,6 @@ export const eventoComissaoIndicacaoSchema = z.object({
   eventoId: z.string().uuid(),
   eventoNome: z.string(),
   organizadorNome: z.string(),
-  primeiroEventoPago: z.boolean(),
   percentualBase: z.number(),
   percentualBonus: z.number(),
   percentualTotal: z.number(),
@@ -47,12 +46,25 @@ export type EventoComissaoIndicacao = z.infer<typeof eventoComissaoIndicacaoSche
 
 export const painelIndicacaoResponseSchema = z.object({
   programa: programaIndicacaoResponseSchema.nullable(),
+  confirmacaoContaPendente: z.boolean(),
   totalIndicados: z.number().int(),
   totalEventosPagos: z.number().int(),
   totalEstimado: z.number(),
   eventos: z.array(eventoComissaoIndicacaoSchema),
 });
 export type PainelIndicacaoResponse = z.infer<typeof painelIndicacaoResponseSchema>;
+
+export const solicitarConfirmacaoContaIndicacaoResponseSchema = z.object({
+  mensagem: z.string(),
+  emailMascarado: z.string(),
+});
+export type SolicitarConfirmacaoContaIndicacaoResponse = z.infer<typeof solicitarConfirmacaoContaIndicacaoResponseSchema>;
+
+export const confirmarContaIndicacaoSchema = z.object({ token: z.string().min(32) });
+export type ConfirmarContaIndicacaoInput = z.infer<typeof confirmarContaIndicacaoSchema>;
+
+export const confirmarContaIndicacaoResponseSchema = z.object({ confirmado: z.literal(true) });
+export type ConfirmarContaIndicacaoResponse = z.infer<typeof confirmarContaIndicacaoResponseSchema>;
 
 export const ofertaIndicacaoPublicaResponseSchema = z.object({
   indicadorNome: z.string(),

@@ -17,5 +17,6 @@ export class IngressoModel {
     public readonly cupomDescontoId: string | null,
     public readonly cupomCodigo: string | null,
     public readonly criadoEm: Date,
+    public readonly usadoEm: Date | null,
   ) {}
 }

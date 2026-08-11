@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { BANCOS_BRASIL } from "@events-platform/shared-types";
 import { ApiError } from "@/lib/api-client";
 import { useNavigationLoading } from "@/lib/navigation-loading";
-import { formatarCpfOuCnpj } from "@/lib/formatters";
+import { formatarAgencia, formatarContaComDigito, formatarCpfOuCnpj } from "@/lib/formatters";
 import { buscarContaBancaria, cadastrarContaBancaria } from "@/lib/finance-client";
 
 export default function ContaRepassePage() {
@@ -92,7 +92,8 @@ function FormularioContaRepasse({ token }: { token: string }) {
                 required
                 placeholder="0001"
                 value={agencia}
-                onChange={(e) => setAgencia(e.target.value)}
+                inputMode="numeric"
+                onChange={(e) => setAgencia(formatarAgencia(e.target.value))}
               />
             </div>
             <div className="flex-1">
@@ -102,7 +103,8 @@ function FormularioContaRepasse({ token }: { token: string }) {
                 required
                 placeholder="12345-6"
                 value={conta}
-                onChange={(e) => setConta(e.target.value)}
+                inputMode="numeric"
+                onChange={(e) => setConta(formatarContaComDigito(e.target.value))}
               />
             </div>
           </div>

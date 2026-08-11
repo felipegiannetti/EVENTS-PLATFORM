@@ -47,7 +47,7 @@ Detalhe completo (e o que **não** está resolvido — throughput em pico de tr�
 ## Outros gaps encontrados (revisão de documentação — não alterar as duas seções acima, só adicionando aqui)
 
 - ~~**`AcordoComercial` não tinha CRUD.**~~ **Resolvido.** O módulo `admin` e a tela `/admin` permitem criar e desativar acordos permanentes, para próximos N eventos pagos ou para um evento específico, com limite financeiro validado e `AuditLog`.
-- **`ListaOff` e `FeatureFlag` existem só no schema do Prisma.** Nenhum dos dois tem controller, service ou tela. `AuditLog` deixou de estar totalmente ocioso: acordos administrativos já são auditados, mas falta estender a cobertura às demais ações sensíveis.
+- ~~**`ListaOff` existia só no schema do Prisma.**~~ **Resolvido.** O módulo `guestlist` implementa listas nomeadas, horário limite, importação em massa, CRUD de convidados e check-in pesquisável. `FeatureFlag` continua apenas no schema. `AuditLog` cobre acordos administrativos, mas ainda precisa ser ampliado para outras ações sensíveis.
 - ~~**Não existia painel `admin_geral`.**~~ **Resolvido para acordos comerciais.** As rotas `/admin/*` usam `RolesGuard`; visão global de eventos, feature flags e outras ferramentas de superadmin continuam como expansão futura.
 
 ## Roadmap futuro (pós web + app completos)

@@ -30,6 +30,16 @@ export function formatarCpfOuCnpj(valor: string): string {
   return digitos.length > 11 ? formatarCnpj(valor) : formatarCpf(valor);
 }
 
+export function formatarAgencia(valor: string): string {
+  return valor.replace(/\D/g, "").slice(0, 6);
+}
+
+export function formatarContaComDigito(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(0, 13);
+  if (digitos.length < 2) return digitos;
+  return `${digitos.slice(0, -1)}-${digitos.slice(-1)}`;
+}
+
 /** (11) 90000-0000 fixo, ou (11) 0000-0000 se digitar só 10 dígitos (fixo sem o 9). */
 export function formatarTelefone(valor: string): string {
   const digitos = valor.replace(/\D/g, "").slice(0, 11);

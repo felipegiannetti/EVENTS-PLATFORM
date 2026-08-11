@@ -12,6 +12,7 @@ export * from "./schemas/cupom-desconto.schema";
 export * from "./schemas/reserva.schema";
 export * from "./schemas/indicacao.schema";
 export * from "./schemas/admin.schema";
+export * from "./schemas/lista-off.schema";
 export * from "./data/bancos-brasil";
 export * from "./data/paises";
 export * from "./validators/documento";

@@ -19,4 +19,5 @@
   - **Rate limit no registro**: `POST /auth/register` também ganhou throttle (não só o login).
   - **XSS em email**: strings controladas pelo organizador (nome do evento, endereço, nome do lote etc.) passaram a ser escapadas (`apps/api/src/infra/mail/escapar-html.util.ts`) antes de entrar no HTML do email de confirmação — sem isso, um nome de evento malicioso quebraria o HTML do email de qualquer comprador.
   - **Headers básicos de segurança** adicionados na API (sem dependência nova).
-- **Ainda não implementado**: Secrets Manager (segredos hoje vivem em `.env` local), rate limit na busca por CPF (não existe busca por CPF — `ListaOff` não tem endpoint algum, ver [03-modulos-backend.md](03-modulos-backend.md)), e log de auditoria (`AuditLog` existe só no schema, nenhum código grava nele).
+- **Lista off**: busca e check-in já existem sob autenticação e RBAC por evento, protegidos também pelo limite global de requisições. Um throttle específico mais restritivo para busca de CPF e auditoria detalhada de cada operação continuam como endurecimento futuro.
+- **Ainda não implementado**: Secrets Manager (segredos hoje vivem em `.env` local) e auditoria ampla; `AuditLog` hoje registra acordos comerciais, mas ainda não registra todas as edições e check-ins.

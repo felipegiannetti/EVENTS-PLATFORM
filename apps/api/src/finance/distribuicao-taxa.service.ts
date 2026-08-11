@@ -31,28 +31,16 @@ export class DistribuicaoTaxaService {
     });
     if (!evento?.organizadorId || evento.ingressos.length === 0) return this.semPrograma();
 
-    const [indicacao, primeiroEventoPago, acordo] = await Promise.all([
+    const [indicacao, acordo] = await Promise.all([
       this.prisma.indicacao.findUnique({
         where: { indicadoId: evento.organizadorId },
-        select: { percentualBeneficioOrganizador: true, primeiroEventoPagoId: true },
-      }),
-      this.prisma.evento.findFirst({
-        where: {
-          organizadorId: evento.organizadorId,
-          ingressos: { some: { status: { not: "cancelado" }, lote: { preco: { gt: 0 } } } },
-        },
-        orderBy: [{ data: "asc" }, { id: "asc" }],
-        select: { id: true },
+        select: { percentualBeneficioOrganizador: true },
       }),
       this.buscarAcordoAplicavel(eventoId, evento.organizadorId),
     ]);
 
-    const primeiro = indicacao?.primeiroEventoPagoId
-      ? indicacao.primeiroEventoPagoId === eventoId
-      : primeiroEventoPago?.id === eventoId;
     const programa = calcularPartesProgramaIndicacao(
       indicacao ? Number(indicacao.percentualBeneficioOrganizador) : null,
-      primeiro,
     );
     const percentualAcordoOrganizador = acordo ? Number(acordo.percentualOrganizador) : 0;
     const percentualLiquidoPlataforma =

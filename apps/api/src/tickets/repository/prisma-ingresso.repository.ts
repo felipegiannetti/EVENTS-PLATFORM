@@ -121,7 +121,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
   async marcarComoUsadoSeValido(id: string): Promise<boolean> {
     const resultado = await this.prisma.ingresso.updateMany({
       where: { id, status: "valido" },
-      data: { status: "usado", version: { increment: 1 } },
+      data: { status: "usado", usadoEm: new Date(), version: { increment: 1 } },
     });
     return resultado.count === 1;
   }
@@ -173,6 +173,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
       ingresso.cupomDescontoId,
       ingresso.cupomDesconto?.codigo ?? null,
       ingresso.criadoEm,
+      ingresso.usadoEm,
     );
   }
 }

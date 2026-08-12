@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import type { AtualizarIngressoInput, EmitirIngressoInput } from "@events-platform/shared-types";
 import { formatarEnderecoEvento, podeCancelarSelfService, PRAZO_RESERVA_MINUTOS } from "@events-platform/shared-types";
 import { escaparHtml } from "../infra/mail/escapar-html.util";
+import { montarCsv } from "../common/csv.util";
 import { INGRESSO_REPOSITORY, type IngressoRepository } from "./repository/ingresso.repository";
 import { LOTE_REPOSITORY, type LoteRepository } from "../events/repository/lote.repository";
 import { EVENTO_REPOSITORY, type EventoRepository } from "../events/repository/evento.repository";
@@ -119,7 +120,11 @@ export class TicketsService {
    * Mesma trava atômica de emitir(): ocuparVagaReservadaSeDisponivel é uma única instrução SQL
    * condicional, então duas reservas concorrentes pro último lugar nunca conseguem as duas passar.
    */
-  async reservar(eventoId: string, loteId: string, compradorEmail?: string): Promise<ReservaModel> {
+  async reservar(
+    eventoId: string,
+    loteId: string,
+    dados: { compradorEmail?: string; compradorNome?: string; compradorTelefone?: string } = {},
+  ): Promise<ReservaModel> {
     const lote = await this.loteRepository.buscarPorId(loteId);
     if (!lote || lote.eventoId !== eventoId || lote.oculto) {
       throw new LoteNaoEncontradoException();
@@ -136,7 +141,27 @@ export class TicketsService {
 
     const id = randomUUID();
     const expiraEm = new Date(Date.now() + PRAZO_RESERVA_MINUTOS * 60 * 1000);
-    return this.reservaRepository.criar({ id, loteId, expiraEm, compradorEmail });
+    return this.reservaRepository.criar({ id, loteId, expiraEm, ...dados });
+  }
+
+  /** Reservas que nunca viraram ingresso — base do relatório de carrinho abandonado do organizador. */
+  async listarCarrinhoAbandonado(eventoId: string) {
+    return this.reservaRepository.listarAbandonadasPorEvento(eventoId);
+  }
+
+  /** CSV com uma linha por reserva abandonada — mesmo formato de gerarCsvParticipantes. */
+  async gerarCsvCarrinhoAbandonado(eventoId: string): Promise<string> {
+    const itens = await this.listarCarrinhoAbandonado(eventoId);
+    const cabecalho = ["Nome", "Email", "Telefone", "Lote", "Iniciado em", "Expirou em"];
+    const linhas = itens.map((item) => [
+      item.compradorNome ?? "",
+      item.compradorEmail ?? "",
+      item.compradorTelefone ?? "",
+      item.loteNome,
+      item.criadoEm.toISOString(),
+      item.expiraEm.toISOString(),
+    ]);
+    return montarCsv(cabecalho, linhas);
   }
 
   /** Converte uma reserva ainda válida no ingresso de verdade — mesmo racional de emitir(), mas a vaga já estava garantida (não precisa checar capacidade de novo, só mover o contador). */

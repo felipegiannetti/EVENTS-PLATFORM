@@ -27,7 +27,8 @@ export interface AtualizarCompradorData {
 export interface AceitarTransferenciaData {
   compradorNome: string;
   compradorEmail: string;
-  compradorDocumento: string;
+  /** Nulo se o destinatário for uma conta Google que ainda não completou o cadastro (sem CPF/CNPJ). */
+  compradorDocumento: string | null;
   qrToken: string;
 }
 

@@ -7,6 +7,8 @@ export class ReservaModel {
     public readonly status: StatusReserva,
     public readonly expiraEm: Date,
     public readonly compradorEmail: string | null,
+    public readonly compradorNome: string | null,
+    public readonly compradorTelefone: string | null,
     public readonly criadoEm: Date,
   ) {}
 }

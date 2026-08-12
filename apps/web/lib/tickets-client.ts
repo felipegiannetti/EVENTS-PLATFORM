@@ -1,4 +1,4 @@
-import type { AtualizarIngressoInput, EmitirIngressoInput, IngressoResponse, LeituraCheckinResponse, MeuIngressoResponse } from "@events-platform/shared-types";
+import type { AtualizarIngressoInput, CarrinhoAbandonadoResponse, EmitirIngressoInput, IngressoResponse, LeituraCheckinResponse, MeuIngressoResponse } from "@events-platform/shared-types";
 import { ApiError, apiFetch } from "./api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -122,4 +122,29 @@ export function reenviarIngresso(eventoId: string, ticketId: string, token: stri
     { method: "POST" },
     token,
   );
+}
+
+/** Reservas de 15min que nunca viraram ingresso — quem chegou perto de comprar e desistiu. */
+export function listarCarrinhoAbandonado(eventoId: string, token: string) {
+  return apiFetch<CarrinhoAbandonadoResponse[]>(`/events/${eventoId}/carrinho-abandonado`, {}, token);
+}
+
+/** CSV precisa do Authorization header, então não dá pra ser um <a href> simples — mesmo padrão de baixarParticipantesCsv. */
+export async function baixarCarrinhoAbandonadoCsv(eventoId: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}/events/${eventoId}/carrinho-abandonado/csv`, {
+    credentials: "include",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(body?.error?.code ?? "ERRO_DESCONHECIDO", body?.error?.message ?? "Não foi possível exportar o CSV.");
+  }
+  const texto = await res.text();
+  const blob = new Blob([texto], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `carrinho-abandonado-${eventoId}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

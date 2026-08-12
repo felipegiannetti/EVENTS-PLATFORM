@@ -7,6 +7,7 @@ import { EventoNaoEncontradoException } from "../events/exceptions/evento-nao-en
 import { NenhumCompradorException } from "./exceptions/nenhum-comprador.exception";
 import { MailService } from "../infra/mail/mail.service";
 import { escaparHtml } from "../infra/mail/escapar-html.util";
+import { montarCsv } from "../common/csv.util";
 
 const ROTULO_STATUS: Record<StatusIngresso, string> = {
   pendente: "Pendente",
@@ -34,21 +35,17 @@ export class ParticipantesService {
     const nomeLote = new Map(lotes.map((lote) => [lote.id, lote.nome]));
 
     const cabecalho = ["Status", "Participante", "Email", "Documento", "Tipo de ingresso", "Data de emissão", "Código do ingresso"];
-    const linhas = ingressos.map((ingresso) =>
-      [
-        ROTULO_STATUS[ingresso.status],
-        ingresso.compradorNome ?? "",
-        ingresso.compradorEmail ?? "",
-        ingresso.compradorDocumento ?? "",
-        nomeLote.get(ingresso.loteId) ?? "",
-        ingresso.criadoEm.toISOString(),
-        ingresso.id,
-      ]
-        .map(escaparCampoCsv)
-        .join(","),
-    );
+    const linhas = ingressos.map((ingresso) => [
+      ROTULO_STATUS[ingresso.status],
+      ingresso.compradorNome ?? "",
+      ingresso.compradorEmail ?? "",
+      ingresso.compradorDocumento ?? "",
+      nomeLote.get(ingresso.loteId) ?? "",
+      ingresso.criadoEm.toISOString(),
+      ingresso.id,
+    ]);
 
-    return [cabecalho.map(escaparCampoCsv).join(","), ...linhas].join("\r\n");
+    return montarCsv(cabecalho, linhas);
   }
 
   /**
@@ -88,11 +85,4 @@ export class ParticipantesService {
 
     return { enviadosPara: emails.length };
   }
-}
-
-function escaparCampoCsv(valor: string): string {
-  if (valor.includes(",") || valor.includes('"') || valor.includes("\n")) {
-    return `"${valor.replace(/"/g, '""')}"`;
-  }
-  return valor;
 }

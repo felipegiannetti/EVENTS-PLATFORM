@@ -86,6 +86,18 @@ function Financeiro({ token }: { token: string }) {
             </Card>
           )}
 
+          {resumo.quantidadeComTaxaFixaGateway > 0 && (
+            <Card className="mt-5 border-border/10 bg-background/40 p-5">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                Taxa fixa de gateway (ingressos abaixo de R$50)
+                <HelpTooltip texto="Ingresso anunciado abaixo de R$50 tem um adicional fixo de R$0,49, junto com a taxa de serviço — cobre o custo fixo do gateway de pagamento sobre um valor baixo. 100% fica com a plataforma, nunca é dividido com o organizador." />
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {resumo.quantidadeComTaxaFixaGateway} ingresso(s) elegível(is) · {formatarReais(resumo.valorTaxaFixaGateway)} no total, já incluído na taxa retida acima.
+              </p>
+            </Card>
+          )}
+
           <Card className="mt-5 border-warning/20 bg-warning/5">
             <div className="flex items-center gap-2 rounded bg-warning/10 px-3 py-2 text-sm text-warning">
               <span>Repasse (em processamento / total a receber / total recebido) ainda não está disponível.</span>

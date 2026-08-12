@@ -45,6 +45,7 @@ function montarGrupos(eventoId: string): GrupoNav[] {
       itens: [
         { href: `${base}/ingressos`, label: "Lotes e ingressos" },
         { href: `${base}/cupons`, label: "Cupons de desconto" },
+        { href: `${base}/carrinho-abandonado`, label: "Carrinho abandonado" },
       ],
     },
     {

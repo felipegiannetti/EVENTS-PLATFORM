@@ -13,6 +13,8 @@ export class UsuarioMapper {
       tipoPessoa: model.tipoPessoa,
       documento: model.documento,
       dataNascimento: model.dataNascimento ? model.dataNascimento.toISOString().slice(0, 10) : null,
+      telefone: model.telefone,
+      usaGoogle: model.googleId !== null,
       criadoEm: model.criadoEm.toISOString(),
     };
   }

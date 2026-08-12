@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { AuthShell } from "@/components/auth-shell";
+import { GoogleLoginButton } from "@/components/google-login-button";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -59,6 +60,12 @@ export default function LoginPage() {
             Entrar
           </Button>
         </form>
+        <div className="my-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-border/15" />
+          <span className="text-xs text-muted">ou</span>
+          <span className="h-px flex-1 bg-border/15" />
+        </div>
+        <GoogleLoginButton />
         <p className="mt-4 text-center text-sm text-muted">
           Não tem conta?{" "}
           <Link href="/registro" className="text-primary hover:underline">

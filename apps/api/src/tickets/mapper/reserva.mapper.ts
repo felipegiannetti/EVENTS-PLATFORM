@@ -11,6 +11,8 @@ export class ReservaMapper {
       status: model.status,
       expiraEm: model.expiraEm.toISOString(),
       compradorEmail: model.compradorEmail,
+      compradorNome: model.compradorNome,
+      compradorTelefone: model.compradorTelefone,
       criadoEm: model.criadoEm.toISOString(),
     };
   }

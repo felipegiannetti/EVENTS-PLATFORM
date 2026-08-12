@@ -20,6 +20,7 @@ import { RefreshTokenInvalidoException } from "./exceptions/refresh-token-invali
 import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontrado.exception";
 import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.exception";
 import { ContaComEventosException } from "./exceptions/conta-com-eventos.exception";
+import { ContaSemSenhaException } from "./exceptions/conta-sem-senha.exception";
 import { PrismaService } from "../infra/prisma/prisma.service";
 
 export interface SessaoContexto {
@@ -79,6 +80,7 @@ export class AuthService {
           tipoPessoa: dados.tipoPessoa,
           documento: dados.documento,
           dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
+          telefone: dados.telefone,
         },
         select: { id: true },
       });
@@ -111,11 +113,15 @@ export class AuthService {
     return this.usuarioRepository.atualizar(usuarioId, {
       nome: input.nome,
       dataNascimento: input.dataNascimento ? new Date(input.dataNascimento) : undefined,
+      telefone: input.telefone,
     });
   }
 
   async alterarEmail(usuarioId: string, novoEmail: string, senhaAtual: string): Promise<UsuarioModel> {
     const usuario = await this.buscarPerfil(usuarioId);
+    if (!usuario.senhaHash) {
+      throw new ContaSemSenhaException();
+    }
     if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
       throw new SenhaAtualInvalidaException();
     }
@@ -129,6 +135,9 @@ export class AuthService {
   /** Troca a senha e revoga todas as sessões (força relogin em outros dispositivos — padrão de segurança). */
   async alterarSenha(usuarioId: string, senhaAtual: string, novaSenha: string): Promise<void> {
     const usuario = await this.buscarPerfil(usuarioId);
+    if (!usuario.senhaHash) {
+      throw new ContaSemSenhaException();
+    }
     if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
       throw new SenhaAtualInvalidaException();
     }
@@ -139,6 +148,9 @@ export class AuthService {
 
   async deletarConta(usuarioId: string, senhaAtual: string): Promise<void> {
     const usuario = await this.buscarPerfil(usuarioId);
+    if (!usuario.senhaHash) {
+      throw new ContaSemSenhaException();
+    }
     if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
       throw new SenhaAtualInvalidaException();
     }
@@ -160,7 +172,8 @@ export class AuthService {
 
   async validarCredenciais(email: string, senha: string): Promise<UsuarioModel | null> {
     const usuario = await this.usuarioRepository.buscarPorEmail(email);
-    if (!usuario) {
+    // Sem senhaHash = conta só-Google — trata como credencial inválida (não vaza que é conta Google).
+    if (!usuario || !usuario.senhaHash) {
       return null;
     }
     const senhaValida = await argon2.verify(usuario.senhaHash, senha);
@@ -169,6 +182,22 @@ export class AuthService {
 
   async login(usuario: UsuarioModel, contexto: SessaoContexto = {}): Promise<AuthResponse> {
     return this.emitirSessao(usuario, randomUUID(), contexto);
+  }
+
+  /**
+   * Find-or-create-or-link pro login via Google: já vinculado (googleId) -> loga; conta já existe
+   * com esse email (cadastro normal antigo) -> vincula o googleId a ela e loga; senão cria uma
+   * conta mínima (sem senha, sem documento) que o usuário completa depois em /perfil.
+   */
+  async loginComGoogle(perfil: { googleId: string; email: string; nome: string }, contexto: SessaoContexto = {}): Promise<AuthResponse> {
+    let usuario = await this.usuarioRepository.buscarPorGoogleId(perfil.googleId);
+    if (!usuario) {
+      const existentePorEmail = await this.usuarioRepository.buscarPorEmail(perfil.email);
+      usuario = existentePorEmail
+        ? await this.usuarioRepository.atualizar(existentePorEmail.id, { googleId: perfil.googleId })
+        : await this.usuarioRepository.criar({ nome: perfil.nome, email: perfil.email, googleId: perfil.googleId });
+    }
+    return this.login(usuario, contexto);
   }
 
   /**

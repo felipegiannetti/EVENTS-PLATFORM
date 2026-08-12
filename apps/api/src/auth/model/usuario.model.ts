@@ -5,11 +5,15 @@ export class UsuarioModel {
     public readonly id: string,
     public readonly nome: string,
     public readonly email: string,
-    public readonly senhaHash: string,
+    /** Nulo pra conta criada via Google (sem senha própria). */
+    public readonly senhaHash: string | null,
     public readonly papelGlobal: PapelGlobal,
     public readonly tipoPessoa: TipoPessoa,
-    public readonly documento: string,
+    /** Nulo até a conta criada via Google completar o cadastro. */
+    public readonly documento: string | null,
     public readonly dataNascimento: Date | null,
+    public readonly telefone: string | null,
+    public readonly googleId: string | null,
     public readonly criadoEm: Date,
   ) {}
 }

@@ -77,5 +77,6 @@ Ver o resumo funcional do produto em [docs/product/resumo-produto.md](../product
 9. [Infraestrutura como código e CI/CD](10-infra-cicd.md)
 10. [Roadmap e fora de escopo](11-roadmap.md)
 11. [Pagamentos, repasses e central financeira — especificação futura](12-pagamentos-e-repasses.md)
+12. [Tarefas pendentes — visão consolidada](13-pendencias.md)
 
 > **Nota de status (atualizada após rodadas de implementação)**: uma fatia real do produto já está construída — ver [docs/implementation/README.md](../implementation/README.md). Modelo de dados core, RBAC, motor de distribuição da taxa, programa de indicação, lista off e painel ADMIN de acordos já existem. Continuam como desenho futuro o gateway/Asaas e seu split real, filas, infraestrutura AWS, app React Native e as áreas ainda não construídas de reports, feature flags e auditoria ampla. Onde um documento descreve esses itens, trata-se de orientação futura, não de funcionalidade em produção.

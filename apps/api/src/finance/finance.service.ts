@@ -8,7 +8,7 @@ import { ContaBancariaModel } from "./model/conta-bancaria.model";
 import { ContaBancariaNaoEncontradaException } from "./exceptions/conta-bancaria-nao-encontrada.exception";
 import { PrismaService } from "../infra/prisma/prisma.service";
 import { DistribuicaoTaxaService } from "./distribuicao-taxa.service";
-import { TAXA_SERVICO_PERCENTUAL } from "./distribuicao-taxa.util";
+import { LIMITE_PRECO_TAXA_FIXA_GATEWAY, TAXA_FIXA_GATEWAY_INGRESSO_BAIXO_VALOR, TAXA_SERVICO_PERCENTUAL } from "./distribuicao-taxa.util";
 
 /** Taxa fixa de serviço da NOVYX — ver docs/architecture/09-modelo-financeiro.md. Só muda por evento/organizador via um AcordoComercial ativo. */
 @Injectable()
@@ -69,6 +69,11 @@ export class FinanceService {
     const cancelados = ingressos.length - validos.length;
     const valorIngressos = validos.reduce((total, ingresso) => total + Number(ingresso.lote.preco), 0);
 
+    // Adicional fixo de gateway (ver distribuicao-taxa.util.ts) — um por ingresso anunciado abaixo
+    // de R$50, 100% pra plataforma, nunca dividido com organizador/indicador.
+    const quantidadeComTaxaFixaGateway = validos.filter((ingresso) => Number(ingresso.lote.preco) < LIMITE_PRECO_TAXA_FIXA_GATEWAY).length;
+    const valorTaxaFixaGateway = quantidadeComTaxaFixaGateway * TAXA_FIXA_GATEWAY_INGRESSO_BAIXO_VALOR;
+
     const taxaPagaPor = evento?.taxaPagaPor ?? "comprador";
     const distribuicao = await this.distribuicaoTaxaService.calcular(eventoId);
     const percentualTaxaServico = TAXA_SERVICO_PERCENTUAL;
@@ -76,9 +81,9 @@ export class FinanceService {
 
     const taxaTotal = valorIngressos * (percentualTaxaServico / 100);
     const valorEstimadoIndicador = valorIngressos * (distribuicao.percentualTotalIndicador / 100);
-    const taxaRetidaPelaNovyx = valorIngressos * (distribuicao.percentualLiquidoPlataforma / 100);
+    const taxaRetidaPelaNovyx = valorIngressos * (distribuicao.percentualLiquidoPlataforma / 100) + valorTaxaFixaGateway;
 
-    const vendasBrutas = taxaPagaPor === "comprador" ? valorIngressos + taxaTotal : valorIngressos;
+    const vendasBrutas = taxaPagaPor === "comprador" ? valorIngressos + taxaTotal + valorTaxaFixaGateway : valorIngressos;
     const vendaLiquida = vendasBrutas - taxaRetidaPelaNovyx - valorEstimadoIndicador;
     const ticketMedioBruto = validos.length > 0 ? vendasBrutas / validos.length : 0;
 
@@ -98,6 +103,8 @@ export class FinanceService {
       valorEstimadoIndicador,
       valorBeneficioIndicacaoOrganizador: valorIngressos * (distribuicao.percentualBeneficioIndicacaoOrganizador / 100),
       taxaPagaPor,
+      valorTaxaFixaGateway,
+      quantidadeComTaxaFixaGateway,
     };
   }
 }

@@ -28,6 +28,11 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
     return usuario ? this.toModel(usuario) : null;
   }
 
+  async buscarPorGoogleId(googleId: string): Promise<UsuarioModel | null> {
+    const usuario = await this.prisma.usuario.findUnique({ where: { googleId } });
+    return usuario ? this.toModel(usuario) : null;
+  }
+
   async atualizar(id: string, data: AtualizarUsuarioData): Promise<UsuarioModel> {
     const usuario = await this.prisma.usuario.update({ where: { id }, data });
     return this.toModel(usuario);
@@ -47,6 +52,8 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
       usuario.tipoPessoa,
       usuario.documento,
       usuario.dataNascimento,
+      usuario.telefone,
+      usuario.googleId,
       usuario.criadoEm,
     );
   }

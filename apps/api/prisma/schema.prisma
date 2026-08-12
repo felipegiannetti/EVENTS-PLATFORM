@@ -82,13 +82,19 @@ model Usuario {
   id              String      @id @default(uuid())
   nome            String
   email           String      @unique
-  senhaHash       String
+  /// Nulo pra conta criada via Google (sem senha própria) — ver GoogleStrategy/AuthService.loginComGoogle.
+  senhaHash       String?
   papelGlobal     PapelGlobal @default(usuario)
   tipoPessoa      TipoPessoa  @default(fisica)
   /// CPF (pessoa física) ou CNPJ (pessoa jurídica) — só dígitos, validado por dígito verificador no registerSchema.
-  documento       String      @unique
+  /// Nulo até a conta criada via Google completar o cadastro (documento não vem do Google).
+  documento       String?     @unique
   /// Só pessoa física — empresa não tem data de nascimento.
   dataNascimento  DateTime?
+  /// Obrigatório no cadastro normal (registerSchema); nulo pra conta criada via Google até completar o cadastro.
+  telefone        String?
+  /// ID da conta Google vinculada — nulo pra conta que nunca usou "Continuar com Google".
+  googleId        String?     @unique
   asaasSubcontaId String?
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
@@ -282,14 +288,18 @@ model Lote {
 /// (nunca por leitura+decisão+escrita separadas). Expiração é *lazy* (checada/aplicada sob demanda,
 /// não por job agendado — ver TicketsService.expirarReservasVencidas e docs/architecture/11-roadmap.md).
 model ReservaIngresso {
-  id             String        @id @default(uuid())
-  loteId         String
-  lote           Lote          @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  status         StatusReserva @default(ativa)
+  id                String        @id @default(uuid())
+  loteId            String
+  lote              Lote          @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  status            StatusReserva @default(ativa)
   /// Sempre criadoEm + 15 minutos — janela fixa por enquanto (não configurável).
-  expiraEm       DateTime
-  compradorEmail String?
-  criadoEm       DateTime      @default(now())
+  expiraEm          DateTime
+  compradorEmail    String?
+  /// Nome/telefone informados no início da reserva — base do relatório de carrinho abandonado do
+  /// organizador (reservas que nunca viraram ingresso). Opcionais, igual ao email.
+  compradorNome     String?
+  compradorTelefone String?
+  criadoEm          DateTime      @default(now())
 
   @@map("reservas_ingresso")
 }

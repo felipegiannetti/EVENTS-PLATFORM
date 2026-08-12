@@ -226,7 +226,7 @@ function DetalheOrganizador({ organizador, token, onAtualizado }: { organizador:
                   {organizador.indicadorNome || "Indicador cadastrado"}{organizador.indicadorEmail ? ` · ${organizador.indicadorEmail}` : ""}
                 </p>
                 <p className="mt-2 leading-5 text-muted">
-                  Indicador: <strong className="text-foreground">{percentualIndicador.toFixed(2)}%</strong> · benefício do organizador: <strong className="text-foreground">{beneficioIndicacao.toFixed(2)}%</strong>
+                  Indicador: <strong className="text-foreground">{percentualIndicador.toFixed(2)}% dos 12% da taxa</strong> · benefício do organizador: <strong className="text-foreground">{beneficioIndicacao.toFixed(2)}% dos 12% da taxa</strong>
                 </p>
               </>
             ) : <p className="mt-1 text-xs leading-5 text-muted">Nenhum percentual do programa de indicação será descontado.</p>}
@@ -242,7 +242,7 @@ function DetalheOrganizador({ organizador, token, onAtualizado }: { organizador:
         </div>
 
         <form onSubmit={solicitarCriacao} className="mt-6 grid gap-5 sm:grid-cols-2">
-          <Input id="percentualAdmin" label="Percentual para o organizador (%)" ajuda="Parcela dos 12% concedida diretamente pelo ADMIN. Ela é independente de qualquer benefício que o organizador já receba pelo programa de indicação." type="number" min="0" max={limiteAdmin} step="0.01" required value={percentual} onChange={(e) => setPercentual(e.target.value)} />
+          <Input id="percentualAdmin" label="Percentual dos 12% para o organizador" ajuda="Parcela dos 12% da taxa concedida diretamente pelo ADMIN. Ela é independente de qualquer benefício que o organizador já receba pelo programa de indicação." type="number" min="0" max={limiteAdmin} step="0.01" required value={percentual} onChange={(e) => setPercentual(e.target.value)} />
           <Select id="escopoAdmin" label="Duração do acordo" ajuda="Define se o percentual valerá para sempre, somente para os próximos eventos pagos ou apenas para um evento específico." value={escopo} onChange={(e) => setEscopo(e.target.value as EscopoAcordoComercial)}>
             <option value="todos_eventos">Para sempre</option>
             <option value="proximos_n_eventos">Próximos X eventos pagos</option>
@@ -265,7 +265,7 @@ function DetalheOrganizador({ organizador, token, onAtualizado }: { organizador:
           {acordosPaginados.map((acordo) => (
             <div key={acordo.id} className={`flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 ${acordo.ativo ? "border-success/20 bg-success/5" : "border-border/10 bg-background/40 opacity-70"}`}>
               <div>
-                <p className="font-semibold">{acordo.percentualOrganizador.toFixed(2)}% para o organizador</p>
+                <p className="font-semibold">{acordo.percentualOrganizador.toFixed(2)}% dos 12% da taxa para o organizador</p>
                 <p className="mt-1 text-xs text-muted">{rotuloEscopo(acordo.escopo, acordo.eventosRestantes)} · criado em {new Date(acordo.criadoEm).toLocaleDateString("pt-BR")}</p>
               </div>
               {acordo.ativo ? (
@@ -363,10 +363,10 @@ function ModalConfirmarAcordo({
             <p className="text-xs text-muted">{organizador.email}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <ResumoConfirmacao rotulo="Organizador pelo acordo" valor={`${percentualOrganizador.toFixed(2)}%`} ajuda="Percentual dos 12% concedido diretamente pelo ADMIN neste acordo. Não inclui o benefício recebido pelo programa de indicação." />
+            <ResumoConfirmacao rotulo="Organizador pelo acordo" valor={`${percentualOrganizador.toFixed(2)}% dos 12%`} ajuda="Percentual dos 12% da taxa concedido diretamente pelo ADMIN neste acordo. Não inclui o benefício recebido pelo programa de indicação." />
             <ResumoConfirmacao rotulo="Plataforma" valor={`${percentualPlataforma.toFixed(2)}% dos 12%`} ajuda="Parcela líquida que permanece com a plataforma depois de descontar o acordo, o benefício da indicação e a comissão do indicador." destaque />
-            <ResumoConfirmacao rotulo="Indicador" valor={`${percentualIndicador.toFixed(2)}%`} ajuda="Comissão permanente de quem indicou o organizador: 0,25% fixos mais o eventual bônus da negociação, apenas em eventos pagos." />
-            <ResumoConfirmacao rotulo="Benefício da indicação" valor={`${beneficioIndicacao.toFixed(2)}%`} ajuda="Percentual negociado no link de indicação que o organizador recebe em todos os eventos pagos, independentemente deste acordo comercial." />
+            <ResumoConfirmacao rotulo="Indicador" valor={`${percentualIndicador.toFixed(2)}% dos 12%`} ajuda="Comissão permanente, retirada dos 12% da taxa, de quem indicou o organizador: 0,25% fixos mais o eventual bônus da negociação, apenas em eventos pagos." />
+            <ResumoConfirmacao rotulo="Benefício da indicação" valor={`${beneficioIndicacao.toFixed(2)}% dos 12%`} ajuda="Parcela dos 12% da taxa negociada no link de indicação que o organizador recebe em todos os eventos pagos, independentemente deste acordo comercial." />
           </div>
           <div className="rounded-2xl border border-border/10 p-4 text-sm">
             <p className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted">

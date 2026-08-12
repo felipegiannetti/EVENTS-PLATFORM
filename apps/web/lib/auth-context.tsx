@@ -13,6 +13,8 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<void>;
   registrar: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Usado só pela página /entrar-google — o refresh token já veio via cookie no redirect do backend, só falta guardar o access token recebido na query string. */
+  definirSessaoExterna: (accessToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -60,8 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null);
   }
 
+  async function definirSessaoExterna(token: string) {
+    setAccessToken(token);
+    setUsuario(await buscarPerfil(token).catch(() => null));
+  }
+
   return (
-    <AuthContext.Provider value={{ accessToken, usuario, carregando, login, registrar, logout }}>
+    <AuthContext.Provider value={{ accessToken, usuario, carregando, login, registrar, logout, definirSessaoExterna }}>
       {children}
     </AuthContext.Provider>
   );

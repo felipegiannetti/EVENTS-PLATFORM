@@ -8,11 +8,12 @@ import { validarCpf, validarCnpj, type OfertaIndicacaoPublicaResponse, type Tipo
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationLoading } from "@/lib/navigation-loading";
 import { ApiError } from "@/lib/api-client";
-import { formatarDocumento } from "@/lib/formatters";
+import { formatarDocumento, formatarTelefone } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { AuthShell } from "@/components/auth-shell";
+import { GoogleLoginButton } from "@/components/google-login-button";
 import { buscarOfertaIndicacao } from "@/lib/referrals-client";
 
 export default function RegistroPage() {
@@ -36,6 +37,7 @@ function FormularioRegistro() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [documento, setDocumento] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
+  const [telefone, setTelefone] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [erroDocumento, setErroDocumento] = useState<string | null>(null);
   const [erroConfirmarSenha, setErroConfirmarSenha] = useState<string | null>(null);
@@ -80,6 +82,7 @@ function FormularioRegistro() {
         tipoPessoa,
         documento,
         dataNascimento: tipoPessoa === "fisica" ? dataNascimento : undefined,
+        telefone,
         codigoIndicacao,
       });
       router.push("/");
@@ -160,6 +163,16 @@ function FormularioRegistro() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <Input
+            id="telefone"
+            label="Telefone"
+            type="tel"
+            required
+            inputMode="numeric"
+            placeholder="(11) 90000-0000"
+            value={telefone}
+            onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+          />
+          <Input
             id="senha"
             label="Senha"
             type="password"
@@ -184,6 +197,12 @@ function FormularioRegistro() {
             Criar conta
           </Button>
         </form>
+        <div className="my-5 flex items-center gap-3">
+          <span className="h-px flex-1 bg-border/15" />
+          <span className="text-xs text-muted">ou</span>
+          <span className="h-px flex-1 bg-border/15" />
+        </div>
+        <GoogleLoginButton texto="Criar conta com Google" />
         <p className="mt-4 text-center text-sm text-muted">
           Já tem conta?{" "}
           <Link href="/login" className="text-primary hover:underline">

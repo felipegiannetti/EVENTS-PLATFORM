@@ -112,6 +112,24 @@ export class TicketsController {
   async enviarEmailParticipantes(@Param("id") eventoId: string, @Body() dto: EnviarEmailParticipantesDto) {
     return this.participantesService.enviarEmailParticipantes(eventoId, dto.mensagem);
   }
+
+  /** Reservas de 15min que nunca viraram ingresso — quem chegou perto de comprar e desistiu. */
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_LEITURA)
+  @Get("carrinho-abandonado")
+  async carrinhoAbandonado(@Param("id") eventoId: string) {
+    return this.ticketsService.listarCarrinhoAbandonado(eventoId);
+  }
+
+  @UseGuards(EventRoleGuard)
+  @EventRoles(...PAPEIS_LEITURA)
+  @Get("carrinho-abandonado/csv")
+  async exportarCarrinhoAbandonadoCsv(@Param("id") eventoId: string, @Res() res: Response) {
+    const csv = await this.ticketsService.gerarCsvCarrinhoAbandonado(eventoId);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="carrinho-abandonado-${eventoId}.csv"`);
+    res.send(csv);
+  }
 }
 
 /** Fora de /events/:id de propósito — é uma listagem cross-evento a partir do email do usuário logado, não algo escopado a um evento específico. */

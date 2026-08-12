@@ -23,7 +23,7 @@ export class ReservasPublicasController {
   @Public()
   @Post("lotes/:loteId/reservas")
   async reservar(@Param("id") eventoId: string, @Param("loteId") loteId: string, @Body() dto: CriarReservaDto) {
-    const reserva = await this.ticketsService.reservar(eventoId, loteId, dto.compradorEmail);
+    const reserva = await this.ticketsService.reservar(eventoId, loteId, dto);
     return this.reservaMapper.toResponse(reserva);
   }
 

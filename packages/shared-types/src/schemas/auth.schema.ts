@@ -16,6 +16,8 @@ export const registerSchema = z
     tipoPessoa: z.enum(TIPO_PESSOA),
     documento: z.string().min(11).max(18),
     dataNascimento: z.string().date().optional(),
+    /** Obrigatório — usado pelo organizador de eventos pra contato com participantes/suporte. */
+    telefone: z.string().min(10).max(20),
     codigoIndicacao: z.string().trim().min(8).max(64).optional(),
   })
   .superRefine((dados, ctx) => {

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
 import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, deletarConta } from "@/lib/auth-client";
-import { formatarDocumento } from "@/lib/formatters";
+import { formatarDocumento, formatarTelefone } from "@/lib/formatters";
 import { listarEventos } from "@/lib/events-client";
 import { listarMeusIngressos } from "@/lib/tickets-client";
 import { useAuth } from "@/lib/auth-context";
@@ -81,7 +81,7 @@ function Perfil({ token }: { token: string }) {
 
         <div>
           {secao === "dados" && <SecaoDados perfil={perfil} token={token} onAtualizado={setPerfil} />}
-          {secao === "seguranca" && <SecaoSeguranca token={token} />}
+          {secao === "seguranca" && <SecaoSeguranca perfil={perfil} token={token} />}
           {secao === "organizados" && <SecaoOrganizados token={token} />}
           {secao === "participados" && <SecaoParticipados token={token} />}
         </div>
@@ -101,6 +101,7 @@ function SecaoDados({
 }) {
   const [nome, setNome] = useState(perfil.nome);
   const [dataNascimento, setDataNascimento] = useState(perfil.dataNascimento ?? "");
+  const [telefone, setTelefone] = useState(perfil.telefone ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -112,7 +113,11 @@ function SecaoDados({
     setSalvando(true);
     try {
       const atualizado = await atualizarPerfil(
-        { nome, dataNascimento: perfil.tipoPessoa === "fisica" ? dataNascimento || undefined : undefined },
+        {
+          nome,
+          dataNascimento: perfil.tipoPessoa === "fisica" ? dataNascimento || undefined : undefined,
+          telefone: telefone || undefined,
+        },
         token,
       );
       onAtualizado(atualizado);
@@ -127,6 +132,12 @@ function SecaoDados({
   return (
     <Card className="p-6">
       <h2 className="section-title !text-base">Dados da conta</h2>
+      {!perfil.documento && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-warning/10 px-3 py-2.5 text-xs leading-5 text-warning">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          Sua conta foi criada com o Google e ainda não tem CPF/CNPJ cadastrado — algumas funcionalidades (como criar eventos pagos) podem exigir completar esse dado. Fale com o suporte pra atualizar.
+        </p>
+      )}
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-5">
         <Input
           id="nome"
@@ -139,7 +150,7 @@ function SecaoDados({
           <Input
             id="documento"
             label={perfil.tipoPessoa === "fisica" ? "CPF" : "CNPJ"}
-            value={formatarDocumento(perfil.documento, perfil.tipoPessoa)}
+            value={perfil.documento ? formatarDocumento(perfil.documento, perfil.tipoPessoa) : "Não cadastrado"}
             disabled
           />
           {perfil.tipoPessoa === "fisica" && (
@@ -152,6 +163,15 @@ function SecaoDados({
             />
           )}
         </div>
+        <Input
+          id="telefone"
+          label="Telefone"
+          type="tel"
+          inputMode="numeric"
+          placeholder="(11) 90000-0000"
+          value={telefone}
+          onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+        />
         <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted">
           <IdCard size={13} /> {perfil.tipoPessoa === "fisica" ? "CPF" : "CNPJ"} não pode ser alterado — é o documento que identifica sua conta.
         </p>
@@ -165,7 +185,7 @@ function SecaoDados({
   );
 }
 
-function SecaoSeguranca({ token }: { token: string }) {
+function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: string }) {
   const router = useRouter();
   const { logout } = useAuth();
 
@@ -244,47 +264,57 @@ function SecaoSeguranca({ token }: { token: string }) {
     <div className="flex flex-col gap-6">
       <Card className="p-6">
         <h2 className="section-title !text-base">Alterar email</h2>
-        <form onSubmit={onAlterarEmail} className="mt-4 flex flex-col gap-4">
-          <Input id="novoEmail" label="Novo email" type="email" required value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
-          <Input
-            id="senhaParaEmail"
-            label="Confirme com sua senha atual"
-            type="password"
-            required
-            value={senhaParaEmail}
-            onChange={(e) => setSenhaParaEmail(e.target.value)}
-          />
-          {erroEmail && <p className="text-sm text-danger">{erroEmail}</p>}
-          {sucessoEmail && <p className="text-sm text-success">Email atualizado.</p>}
-          <Button type="submit" loading={salvandoEmail} className="w-full sm:w-fit">
-            Alterar email
-          </Button>
-        </form>
+        {perfil.usaGoogle ? (
+          <p className="mt-1 text-sm text-muted">Sua conta usa login com o Google — o email é o mesmo da sua conta Google e não pode ser trocado por aqui.</p>
+        ) : (
+          <form onSubmit={onAlterarEmail} className="mt-4 flex flex-col gap-4">
+            <Input id="novoEmail" label="Novo email" type="email" required value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} />
+            <Input
+              id="senhaParaEmail"
+              label="Confirme com sua senha atual"
+              type="password"
+              required
+              value={senhaParaEmail}
+              onChange={(e) => setSenhaParaEmail(e.target.value)}
+            />
+            {erroEmail && <p className="text-sm text-danger">{erroEmail}</p>}
+            {sucessoEmail && <p className="text-sm text-success">Email atualizado.</p>}
+            <Button type="submit" loading={salvandoEmail} className="w-full sm:w-fit">
+              Alterar email
+            </Button>
+          </form>
+        )}
       </Card>
 
       <Card className="p-6">
         <h2 className="section-title !text-base">Alterar senha</h2>
-        <p className="mt-1 text-sm text-muted">Ao trocar a senha, todas as suas sessões em outros dispositivos são encerradas.</p>
-        <form onSubmit={onAlterarSenha} className="mt-4 flex flex-col gap-4">
-          <Input id="senhaAtual" label="Senha atual" type="password" required value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input id="novaSenha" label="Nova senha" type="password" required minLength={8} value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
-            <Input
-              id="confirmarNovaSenha"
-              label="Confirmar nova senha"
-              type="password"
-              required
-              minLength={8}
-              value={confirmarNovaSenha}
-              onChange={(e) => setConfirmarNovaSenha(e.target.value)}
-            />
-          </div>
-          {erroSenha && <p className="text-sm text-danger">{erroSenha}</p>}
-          {sucessoSenha && <p className="text-sm text-success">Senha atualizada.</p>}
-          <Button type="submit" loading={salvandoSenha} className="w-full sm:w-fit">
-            Alterar senha
-          </Button>
-        </form>
+        {perfil.usaGoogle ? (
+          <p className="mt-1 text-sm text-muted">Sua conta usa login com o Google — não existe senha própria pra trocar aqui.</p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-muted">Ao trocar a senha, todas as suas sessões em outros dispositivos são encerradas.</p>
+            <form onSubmit={onAlterarSenha} className="mt-4 flex flex-col gap-4">
+              <Input id="senhaAtual" label="Senha atual" type="password" required value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input id="novaSenha" label="Nova senha" type="password" required minLength={8} value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+                <Input
+                  id="confirmarNovaSenha"
+                  label="Confirmar nova senha"
+                  type="password"
+                  required
+                  minLength={8}
+                  value={confirmarNovaSenha}
+                  onChange={(e) => setConfirmarNovaSenha(e.target.value)}
+                />
+              </div>
+              {erroSenha && <p className="text-sm text-danger">{erroSenha}</p>}
+              {sucessoSenha && <p className="text-sm text-success">Senha atualizada.</p>}
+              <Button type="submit" loading={salvandoSenha} className="w-full sm:w-fit">
+                Alterar senha
+              </Button>
+            </form>
+          </>
+        )}
       </Card>
 
       <Card className="border-danger/20 bg-danger/5 p-6">
@@ -296,7 +326,9 @@ function SecaoSeguranca({ token }: { token: string }) {
           ou remover o evento antes de conseguir excluir a conta.
         </p>
 
-        {!mostrarExclusao ? (
+        {perfil.usaGoogle ? (
+          <p className="mt-4 text-sm text-muted">Contas criadas com login do Google ainda não têm exclusão self-service (exige senha, que essa conta não tem) — fale com o suporte.</p>
+        ) : !mostrarExclusao ? (
           <Button variant="secondary" onClick={() => setMostrarExclusao(true)} className="mt-4 gap-2 text-danger">
             <Trash2 size={16} /> Excluir minha conta
           </Button>

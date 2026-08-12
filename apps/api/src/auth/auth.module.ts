@@ -3,6 +3,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { LocalStrategy } from "./local.strategy";
+import { GoogleStrategy } from "./google.strategy";
 import { UsuarioMapper } from "./mapper/usuario.mapper";
 import { USUARIO_REPOSITORY } from "./repository/usuario.repository";
 import { PrismaUsuarioRepository } from "./repository/prisma-usuario.repository";
@@ -16,6 +17,7 @@ import { EventsModule } from "../events/events.module";
   providers: [
     AuthService,
     LocalStrategy,
+    GoogleStrategy,
     UsuarioMapper,
     { provide: USUARIO_REPOSITORY, useClass: PrismaUsuarioRepository },
     { provide: REFRESH_TOKEN_REPOSITORY, useClass: PrismaRefreshTokenRepository },

@@ -7,8 +7,12 @@ export const usuarioResponseSchema = z.object({
   email: z.string().email(),
   papelGlobal: z.enum(PAPEL_GLOBAL),
   tipoPessoa: z.enum(TIPO_PESSOA),
-  documento: z.string(),
+  /** Nulo pra conta criada via Google que ainda não completou o cadastro (CPF/CNPJ). */
+  documento: z.string().nullable(),
   dataNascimento: z.string().date().nullable(),
+  telefone: z.string().nullable(),
+  /** true = conta usa "Continuar com Google" (sem senha própria — telas de trocar/apagar senha não se aplicam). */
+  usaGoogle: z.boolean(),
   criadoEm: z.string().datetime(),
 });
 export type UsuarioResponse = z.infer<typeof usuarioResponseSchema>;
@@ -17,6 +21,7 @@ export type UsuarioResponse = z.infer<typeof usuarioResponseSchema>;
 export const atualizarPerfilSchema = z.object({
   nome: z.string().min(2).max(160).optional(),
   dataNascimento: z.string().date().optional(),
+  telefone: z.string().min(10).max(20).optional(),
 });
 export type AtualizarPerfilInput = z.infer<typeof atualizarPerfilSchema>;
 

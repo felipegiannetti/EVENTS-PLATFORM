@@ -31,5 +31,8 @@ export const resumoFinanceiroEventoSchema = z.object({
   valorEstimadoIndicador: z.number(),
   valorBeneficioIndicacaoOrganizador: z.number(),
   taxaPagaPor: z.enum(TAXA_PAGA_POR),
+  /** Soma do adicional fixo de R$0,49/ingresso (gateway) — só ingressos com lote.preco < R$50, 100% pra plataforma. */
+  valorTaxaFixaGateway: z.number(),
+  quantidadeComTaxaFixaGateway: z.number().int(),
 });
 export type ResumoFinanceiroEvento = z.infer<typeof resumoFinanceiroEventoSchema>;

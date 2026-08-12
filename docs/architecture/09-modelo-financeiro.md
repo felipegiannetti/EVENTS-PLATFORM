@@ -28,6 +28,14 @@ O que **não** está implementado é o checkout/gateway de pagamento (Asaas): sp
 
 Registrado como regra de negócio futura em [12-pagamentos-e-repasses.md#43](12-pagamentos-e-repasses.md#43-ingresso-com-cancelamento-flexível--produto-pago-10-revertido-só-à-plataforma): um ingresso com opção de cancelamento flexível cobra um adicional de 10% sobre ingresso+taxa que fica **inteiro com a plataforma**, sem passar pelo `AcordoComercial` nem pelo split de 12% descrito acima — é um valor conceitualmente separado da taxa de serviço, não implementado ainda (depende de checkout self-service).
 
+## Taxa fixa de gateway em ingressos de baixo valor (implementado)
+
+Ingresso anunciado por menos de **R$50** (`LIMITE_PRECO_TAXA_FIXA_GATEWAY`, `apps/api/src/finance/distribuicao-taxa.util.ts`) paga um adicional fixo de **R$0,49** por ingresso (`TAXA_FIXA_GATEWAY_INGRESSO_BAIXO_VALOR`), somado à taxa de serviço normal de 12% — cobre o custo fixo que o gateway de pagamento cobra em cima de uma transação de valor baixo, que proporcionalmente pesaria mais que o percentual normal.
+
+- **100% desse valor é receita da plataforma**, no mesmo racional do adicional de 10% do cancelamento flexível acima: nunca passa pelo `AcordoComercial` nem pelo programa de indicação, mesmo que o organizador tenha um acordo que devolva parte dos 12% ou um indicador que receba comissão — o R$0,49 nunca é dividido.
+- Segue `Evento.taxaPagaPor` como a taxa normal: se o comprador paga a taxa por fora, o R$0,49 também é somado ao `vendasBrutas`; se o organizador absorve, o R$0,49 só reduz a `vendaLiquida` dele (nunca chega a aparecer separado em `vendasBrutas`).
+- **Já implementado e calculado** em `FinanceService.buscarResumoFinanceiro` — conta quantos ingressos válidos daquele evento têm `lote.preco < 50` (`quantidadeComTaxaFixaGateway`) e soma o total (`valorTaxaFixaGateway`), ambos expostos em `GET /events/:id/financeiro/resumo` e exibidos na tela Financeiro do organizador. Como não existe checkout de verdade ainda, isso hoje só afeta os números calculados a partir de ingressos emitidos manualmente — nenhuma cobrança real acontece até existir gateway.
+
 ## Programa de indicação (referral) — implementado no produto, aguardando liquidação real
 
 - Qualquer usuário cadastrado pode ativar o programa em `/indicacoes`. A conta bancária é enviada para confirmação pelo email do cadastro; os dados sensíveis ficam criptografados e a conta só passa a valer depois do clique no link de 24 horas. Alterações seguem o mesmo fluxo e não substituem a conta ativa antes da confirmação.

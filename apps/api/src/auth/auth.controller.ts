@@ -18,6 +18,8 @@ import { Public } from "../security/decorators/public.decorator";
 import { CurrentUser } from "../security/decorators/current-user.decorator";
 import { AuthService } from "./auth.service";
 import { LocalAuthGuard } from "./local-auth.guard";
+import { GoogleAuthGuard } from "./google-auth.guard";
+import type { GooglePerfil } from "./google.strategy";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshDto } from "./dto/refresh.dto";
@@ -63,6 +65,31 @@ export class AuthController {
     const sessao = await this.authService.login(usuario as UsuarioModel, this.contexto(req));
     this.setRefreshCookie(res, sessao.refreshToken);
     return sessao;
+  }
+
+  /** Só dispara o redirect pro consentimento do Google — a lógica em si vive no callback abaixo. */
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @Get("google")
+  iniciarLoginGoogle() {}
+
+  /**
+   * O Google chama esta rota via GET (redirect do navegador, não XHR) — por isso a resposta não é
+   * JSON: seta o cookie de refresh igual ao login normal e redireciona pro front com o access token
+   * na query string, que a página /entrar-google lê e joga pro AuthContext (ver apps/web).
+   */
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @Get("google/callback")
+  async callbackGoogle(
+    @CurrentUser() perfil: unknown,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const sessao = await this.authService.loginComGoogle(perfil as GooglePerfil, this.contexto(req));
+    this.setRefreshCookie(res, sessao.refreshToken);
+    const frontendUrl = (process.env.WEB_ORIGIN ?? "http://localhost:3001").split(",")[0].trim();
+    res.redirect(`${frontendUrl}/entrar-google?accessToken=${encodeURIComponent(sessao.accessToken)}&expiraEm=${encodeURIComponent(sessao.expiraEm)}`);
   }
 
   @Public()

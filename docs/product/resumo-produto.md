@@ -66,6 +66,12 @@ Plataforma de venda e gestão de ingressos para eventos, com foco em **controle 
 - Configuração comercial já implementada: parcela da taxa para o organizador para sempre, nos próximos X eventos pagos ou em evento específico, limitada automaticamente pelo programa de indicação — ver [docs/architecture/09-modelo-financeiro.md](../architecture/09-modelo-financeiro.md)
 - Também é onde, no futuro, dá pra colocar: monitoramento de uso, saúde do sistema, gestão de todos os eventos/organizadores cadastrados
 
+#### TODO — feature flags com PostHog
+
+- O painel local de funcionalidades é transitório; as flags definitivas deverão ser gerenciadas pelo **PostHog**.
+- Funcionalidades sensíveis precisam ser validadas no backend, mesmo quando a interface também estiver escondida por uma flag.
+- A migração, segmentação e estratégia de fallback estão detalhadas no [roadmap técnico](../architecture/11-roadmap.md#todo--migrar-feature-flags-para-o-posthog).
+
 ### 3.9 Política de cancelamento e página de Políticas
 - Regra de negócio registrada, **página ainda não criada**: o comprador pode cancelar uma compra em até 7 dias corridos após a compra (direito de arrependimento, análogo ao art. 49 do CDC para compras online)
 - Precisa de uma página de Políticas pública expondo essa e outras regras — ver [docs/architecture/12-pagamentos-e-repasses.md#42](../architecture/12-pagamentos-e-repasses.md#42-cancelamento-de-compra--direito-de-arrependimento-7-dias-e-página-de-políticas)

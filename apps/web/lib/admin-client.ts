@@ -28,6 +28,14 @@ export function desativarAcordoAdmin(acordoId: string, token: string) {
   );
 }
 
+export function reativarAcordoAdmin(acordoId: string, token: string) {
+  return apiFetch<AcordoComercialResponse>(
+    `/admin/acordos/${acordoId}/reativar`,
+    { method: "PATCH", body: JSON.stringify({}) },
+    token,
+  );
+}
+
 /** Espaço de Suporte — busca evento de qualquer organizador (modo leitura, ver EventRoleGuard). */
 export function buscarEventosAdmin(busca: string, token: string) {
   const query = busca.trim() ? `?busca=${encodeURIComponent(busca.trim())}` : "";

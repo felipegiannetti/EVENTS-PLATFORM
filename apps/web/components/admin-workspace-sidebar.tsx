@@ -58,18 +58,18 @@ export function AdminWorkspaceSidebar() {
           className={`group relative mb-1.5 flex items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 transition-all duration-200 ${
             ativo
               ? "border-white/15 bg-gradient-to-r from-violet-500/35 to-blue-500/20 text-white shadow-[0_12px_32px_rgb(0_0_0/0.18)]"
-              : "border-transparent text-white/68 hover:translate-x-0.5 hover:border-white/10 hover:bg-white/[0.07] hover:text-white"
+              : "border-transparent text-white/75 hover:translate-x-0.5 hover:border-white/10 hover:bg-white/[0.07] hover:text-white"
           }`}
         >
           {ativo && <span className="absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-violet-300" />}
-          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${ativo ? "bg-white/14 text-white" : "bg-white/[0.06] text-white/65 group-hover:bg-white/10 group-hover:text-white"}`}>
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${ativo ? "bg-white/[0.14] text-white" : "bg-white/[0.06] text-white/70 group-hover:bg-white/10 group-hover:text-white"}`}>
             <Icon size={18} strokeWidth={2} />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{item.label}</span>
-            <span className={`mt-0.5 block truncate text-[11px] ${ativo ? "text-white/65" : "text-white/38 group-hover:text-white/55"}`}>{item.descricao}</span>
+            <span className={`mt-0.5 block truncate text-[11px] ${ativo ? "text-white/70" : "text-white/50 group-hover:text-white/70"}`}>{item.descricao}</span>
           </span>
-          <ChevronRight size={15} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${ativo ? "text-white/80" : "text-white/25"}`} />
+          <ChevronRight size={15} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${ativo ? "text-white/80" : "text-white/40"}`} />
         </Link>
       );
     });

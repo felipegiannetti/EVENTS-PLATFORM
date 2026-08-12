@@ -51,6 +51,20 @@ Detalhe completo (e o que **não** está resolvido — throughput em pico de tr�
 - ~~**`FeatureFlag` existia só no schema do Prisma.**~~ **Resolvido (só o registro, sem enforcement ainda).** CRUD completo em `/admin/sistema` (`GET/POST /admin/feature-flags`, `PATCH /admin/feature-flags/:id/alternar`) — o admin cria uma chave e liga/desliga, e isso fica salvo e auditado (`AuditLog`, ações `ATIVAR_FEATURE_FLAG`/`DESATIVAR_FEATURE_FLAG`). **Nenhuma funcionalidade do sistema checa esses flags ainda** — é puramente um registro/controle por enquanto; conectar isso ao comportamento real de cada funcionalidade (ex: `TicketsService` checando se `transferencia_ingressos` está ativo antes de permitir transferir) fica como próximo passo, quando/se fizer sentido. `eventosEscopo` (flag valendo só pra alguns eventos, não globalmente) também não tem UI ainda — hoje toda flag criada é sempre global.
 - ~~**Não existia painel `admin_geral`.**~~ **Resolvido.** Painel completo em `/admin`, com navbar própria (sidebar, mesmo padrão do workspace de evento) e 4 áreas: **Administrador** (acordos comerciais, já existia), **Suporte** (busca qualquer evento de qualquer organizador e mostra ingressos + leituras de check-in, modo leitura, sem ações de edição — telas novas em `/admin/suporte`), **Sistema** (feature flags, ver item acima) e **Financeiro** (consolidado de vendas/taxa/repasse entre todos os eventos, reaproveitando o mesmo cálculo do financeiro por evento). Tecnicamente, o Suporte funciona porque `EventRoleGuard` (`apps/api/src/security/guards/event-role.guard.ts`) agora deixa `admin_geral` passar direto, sem precisar de `PapelAcesso` — **isso vale pra toda rota gated por esse guard**, não só as novas (ex: um `admin_geral` também consegue chamar rotas de escrita de eventos/tickets que o frontend do admin não expõe hoje, já que o guard não distingue leitura de escrita). Pensado desde já pra um dia virar subdomínio próprio (`admin.raro...`) — por isso já vive isolado como uma "workspace" (`/admin/*`), sem a navbar geral do site.
 
+### TODO — migrar feature flags para o PostHog
+
+O CRUD local de `FeatureFlag` em `/admin/sistema` é provisório e ainda não controla o comportamento das funcionalidades. A solução definitiva deverá usar **PostHog Feature Flags** como fonte de verdade.
+
+- [ ] Configurar os SDKs do PostHog no backend e no frontend, com chaves e host por ambiente.
+- [ ] Identificar o usuário autenticado e disponibilizar propriedades seguras para segmentação; avaliar grupos por organizador e evento.
+- [ ] Migrar as chaves já cadastradas localmente para o PostHog, preservando nomes e estado inicial durante a transição.
+- [ ] Avaliar flags no backend para qualquer regra de segurança ou autorização; a verificação do frontend serve apenas para esconder ou apresentar a interface.
+- [ ] Criar uma camada única de consulta de flags para evitar chamadas diretas ao SDK espalhadas pelos módulos.
+- [ ] Definir cache, timeout e comportamento de fallback para indisponibilidade do PostHog, com padrão seguro para funcionalidades sensíveis.
+- [ ] Registrar em auditoria as mudanças administrativas relevantes e documentar quem pode alterar flags no projeto do PostHog.
+- [ ] Adicionar testes para flag ligada, desligada, rollout segmentado e falha de comunicação.
+- [ ] Após a migração, remover ou transformar o modelo/CRUD local de `FeatureFlag` em uma visualização somente leitura, evitando duas fontes de verdade.
+
 ## Roadmap futuro (pós web + app completos)
 
 Sistema de ponto de venda para o **bar do evento** (comandas, controle de consumo, fechamento de caixa) — módulo novo, avaliado depois que a plataforma de ingressos e o app estiverem consolidados. A arquitetura de monólito modular já comporta esse tipo de adição futura como um novo módulo (ex: `bar-pos`), reaproveitando auth, RBAC por evento e o mesmo app mobile.

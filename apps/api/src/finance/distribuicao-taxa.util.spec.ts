@@ -32,8 +32,8 @@ describe("distribuição da taxa do programa de indicação", () => {
   });
 
   it("reserva a comissão fixa e o bônus ao limitar o acordo do ADMIN", () => {
-    expect(percentualMaximoAcordoAdmin(1)).toBe(10.5);
-    expect(percentualMaximoAcordoAdmin(2)).toBe(9.75);
-    expect(percentualMaximoAcordoAdmin(null)).toBe(12);
+    expect(percentualMaximoAcordoAdmin(1)).toBe(4);
+    expect(percentualMaximoAcordoAdmin(2)).toBe(4);
+    expect(percentualMaximoAcordoAdmin(null)).toBe(4);
   });
 });

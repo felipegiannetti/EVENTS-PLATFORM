@@ -28,6 +28,11 @@ export class AdminController {
     return this.adminService.desativarAcordo(id, admin.id);
   }
 
+  @Patch("acordos/:id/reativar")
+  reativarAcordo(@Param("id") id: string, @CurrentUser() admin: AuthenticatedUser) {
+    return this.adminService.reativarAcordo(id, admin.id);
+  }
+
   @Get("eventos")
   listarEventos(@Query("busca") busca?: string) {
     return this.adminService.listarEventos(busca);

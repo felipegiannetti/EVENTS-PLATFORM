@@ -9,7 +9,11 @@ import type {
   OrganizadorAdminResponse,
 } from "@events-platform/shared-types";
 import { PrismaService } from "../infra/prisma/prisma.service";
-import { percentualMaximoAcordoAdmin, TAXA_SERVICO_PERCENTUAL } from "../finance/distribuicao-taxa.util";
+import {
+  calcularPartesProgramaIndicacao,
+  percentualMaximoAcordoAdmin,
+  TAXA_SERVICO_PERCENTUAL,
+} from "../finance/distribuicao-taxa.util";
 import { FinanceService } from "../finance/finance.service";
 
 @Injectable()
@@ -27,22 +31,34 @@ export class AdminService {
         id: true,
         nome: true,
         email: true,
-        indicacaoRecebida: { select: { percentualBeneficioOrganizador: true } },
+        indicacaoRecebida: {
+          select: {
+            percentualBeneficioOrganizador: true,
+            indicador: { select: { nome: true, email: true } },
+          },
+        },
         eventosOrganizados: { orderBy: { data: "desc" }, select: { id: true, nome: true, data: true } },
         acordosComerciais: { orderBy: { criadoEm: "desc" } },
       },
     });
-    return usuarios.map((usuario) => ({
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      indicado: Boolean(usuario.indicacaoRecebida),
-      percentualBeneficioIndicacao: usuario.indicacaoRecebida
+    return usuarios.map((usuario) => {
+      const beneficio = usuario.indicacaoRecebida
         ? Number(usuario.indicacaoRecebida.percentualBeneficioOrganizador)
-        : 0,
-      eventos: usuario.eventosOrganizados.map((evento) => ({ ...evento, data: evento.data.toISOString() })),
-      acordos: usuario.acordosComerciais.map((acordo) => this.mapearAcordo(acordo)),
-    }));
+        : null;
+      const programa = calcularPartesProgramaIndicacao(beneficio);
+      return {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        indicado: Boolean(usuario.indicacaoRecebida),
+        percentualBeneficioIndicacao: programa.percentualBeneficioOrganizador,
+        indicadorNome: usuario.indicacaoRecebida?.indicador.nome ?? null,
+        indicadorEmail: usuario.indicacaoRecebida?.indicador.email ?? null,
+        percentualIndicador: programa.percentualTotalIndicador,
+        eventos: usuario.eventosOrganizados.map((evento) => ({ ...evento, data: evento.data.toISOString() })),
+        acordos: usuario.acordosComerciais.map((acordo) => this.mapearAcordo(acordo)),
+      };
+    });
   }
 
   async criarAcordo(input: CriarAcordoComercialInput, adminId: string): Promise<AcordoComercialResponse> {
@@ -63,6 +79,7 @@ export class AdminService {
     const beneficio = organizador.indicacaoRecebida
       ? Number(organizador.indicacaoRecebida.percentualBeneficioOrganizador)
       : null;
+    const programa = calcularPartesProgramaIndicacao(beneficio);
     const limite = percentualMaximoAcordoAdmin(beneficio);
     if (input.percentualOrganizador > limite) {
       throw new ConflictException(
@@ -80,7 +97,11 @@ export class AdminService {
           organizadorId: input.organizadorId,
           eventoId: input.escopo === "evento_especifico" ? input.eventoId : undefined,
           percentualOrganizador: input.percentualOrganizador,
-          percentualNovyx: TAXA_SERVICO_PERCENTUAL - input.percentualOrganizador,
+          percentualNovyx:
+            TAXA_SERVICO_PERCENTUAL -
+            input.percentualOrganizador -
+            programa.percentualBeneficioOrganizador -
+            programa.percentualTotalIndicador,
           escopo: input.escopo,
           eventosRestantes: input.escopo === "proximos_n_eventos" ? input.eventosRestantes : undefined,
           definidoPorAdminId: adminId,
@@ -101,6 +122,53 @@ export class AdminService {
       const atualizado = await tx.acordoComercial.update({ where: { id }, data: { ativo: false } });
       await tx.auditLog.create({
         data: { usuarioId: adminId, acao: "DESATIVAR_ACORDO_COMERCIAL", entidade: "AcordoComercial", entidadeId: id },
+      });
+      return atualizado;
+    });
+    return this.mapearAcordo(acordo);
+  }
+
+  async reativarAcordo(id: string, adminId: string): Promise<AcordoComercialResponse> {
+    const existente = await this.prisma.acordoComercial.findUnique({
+      where: { id },
+      include: {
+        organizador: {
+          select: { indicacaoRecebida: { select: { percentualBeneficioOrganizador: true } } },
+        },
+      },
+    });
+    if (!existente) throw new NotFoundException("Acordo comercial não encontrado.");
+
+    const beneficio = existente.organizador.indicacaoRecebida
+      ? Number(existente.organizador.indicacaoRecebida.percentualBeneficioOrganizador)
+      : null;
+    const programa = calcularPartesProgramaIndicacao(beneficio);
+    const percentualOrganizador = Number(existente.percentualOrganizador);
+    const limite = percentualMaximoAcordoAdmin(beneficio);
+    if (percentualOrganizador > limite) {
+      throw new ConflictException(
+        `Este acordo concede ${percentualOrganizador.toLocaleString("pt-BR")}% e não pode ser reativado porque o limite atual é ${limite.toLocaleString("pt-BR")}%.`,
+      );
+    }
+
+    const acordo = await this.prisma.$transaction(async (tx) => {
+      await tx.acordoComercial.updateMany({
+        where: { organizadorId: existente.organizadorId, ativo: true, id: { not: id } },
+        data: { ativo: false },
+      });
+      const atualizado = await tx.acordoComercial.update({
+        where: { id },
+        data: {
+          ativo: true,
+          percentualNovyx:
+            TAXA_SERVICO_PERCENTUAL -
+            percentualOrganizador -
+            programa.percentualBeneficioOrganizador -
+            programa.percentualTotalIndicador,
+        },
+      });
+      await tx.auditLog.create({
+        data: { usuarioId: adminId, acao: "REATIVAR_ACORDO_COMERCIAL", entidade: "AcordoComercial", entidadeId: id },
       });
       return atualizado;
     });

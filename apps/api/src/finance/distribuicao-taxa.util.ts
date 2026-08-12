@@ -1,4 +1,5 @@
 export const TAXA_SERVICO_PERCENTUAL = 12;
+export const ACORDO_ADMIN_MAXIMO_PERCENTUAL = 4;
 export const BENEFICIO_MAXIMO_INDICACAO_ORGANIZADOR = 2;
 export const BONUS_ECONOMIA_INDICADOR = 0.25;
 
@@ -33,5 +34,6 @@ export function calcularPartesProgramaIndicacao(
 
 export function percentualMaximoAcordoAdmin(percentualBeneficioOrganizador: number | null): number {
   const programa = calcularPartesProgramaIndicacao(percentualBeneficioOrganizador);
-  return TAXA_SERVICO_PERCENTUAL - programa.percentualBeneficioOrganizador - programa.percentualTotalIndicador;
+  const disponivel = TAXA_SERVICO_PERCENTUAL - programa.percentualBeneficioOrganizador - programa.percentualTotalIndicador;
+  return Math.min(ACORDO_ADMIN_MAXIMO_PERCENTUAL, disponivel);
 }

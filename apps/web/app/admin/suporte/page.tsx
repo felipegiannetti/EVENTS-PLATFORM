@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CalendarDays, LifeBuoy, MapPin, Search } from "lucide-react";
 import type { EventoAdminResponse } from "@events-platform/shared-types";
@@ -22,21 +22,29 @@ function PainelSuporte({ token }: { token: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [pagina, setPagina] = useState(1);
+  const requisicaoAtual = useRef(0);
 
   async function pesquisar(termo: string) {
+    const requisicao = ++requisicaoAtual.current;
     setCarregando(true);
     setErro(null);
     try {
-      setEventos(await buscarEventosAdmin(termo, token));
+      const encontrados = await buscarEventosAdmin(termo, token);
+      if (requisicao !== requisicaoAtual.current) return;
+      setEventos(encontrados);
       setPagina(1);
     } catch (err) {
+      if (requisicao !== requisicaoAtual.current) return;
       setErro(err instanceof ApiError ? err.message : "Não foi possível buscar os eventos.");
     } finally {
-      setCarregando(false);
+      if (requisicao === requisicaoAtual.current) setCarregando(false);
     }
   }
 
-  useEffect(() => { void pesquisar(""); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void pesquisar(busca); }, 300);
+    return () => window.clearTimeout(timer);
+  }, [busca, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function aoSubmeter(e: FormEvent) {
     e.preventDefault();
@@ -62,10 +70,13 @@ function PainelSuporte({ token }: { token: string }) {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Nome do evento, do organizador ou email..."
+            aria-label="Pesquisar evento ou organizador"
             className="h-12 w-full rounded-xl border border-border/15 bg-background/60 pl-11 pr-4 text-sm text-foreground shadow-inner outline-none transition-all placeholder:text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
           />
         </div>
       </form>
+
+      <p className="mt-2 text-xs text-muted">{carregando ? "Buscando..." : "A busca é atualizada automaticamente enquanto você digita."}</p>
 
       {erro && <p className="mt-4 text-sm text-danger">{erro}</p>}
 

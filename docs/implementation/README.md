@@ -98,9 +98,12 @@ Todas as rotas exigem `papelGlobal: admin_geral` por `RolesGuard`. Frontend em `
 | `GET /admin/organizadores` | Lista organizadores pelo vínculo estável `Evento.organizadorId`, seus eventos, indicação e histórico de acordos |
 | `POST /admin/acordos` | Cria acordo para sempre, próximos N eventos pagos ou evento específico. Desativa o acordo ativo anterior e rejeita percentual acima do espaço disponível nos 12% |
 | `PATCH /admin/acordos/:id/desativar` | Desativa um acordo sem apagar o histórico; criação e desativação geram `AuditLog` |
+| `PATCH /admin/acordos/:id/reativar` | Reativa um acordo desativado, substitui o acordo ativo atual do organizador e registra `REATIVAR_ACORDO_COMERCIAL` no `AuditLog` |
 | `GET /admin/eventos?busca=` | **Espaço de Suporte** — busca evento de qualquer organizador por nome do evento/organizador/email. Base de `/admin/suporte`, que deep-linka pra uma tela nova e somente-leitura mostrando ingressos e leituras de check-in daquele evento (sem nenhum botão de ação) |
 | `GET/POST /admin/feature-flags`, `PATCH .../:id/alternar` | **Espaço de Sistema** — CRUD de `FeatureFlag` (só registro/estado por enquanto, nenhuma funcionalidade do sistema checa esses flags ainda). Alternar gera `AuditLog` |
 | `GET /admin/financeiro` | **Espaço Financeiro** — consolidado entre todos os eventos com venda, reaproveitando `FinanceService.buscarResumoFinanceiro` por evento (mesmo cálculo que o organizador já vê, sem `Transacao` real por trás) |
+
+> **TODO de feature flags:** o CRUD local atual é transitório. A fonte de verdade planejada é o **PostHog Feature Flags**, com avaliação obrigatória no backend para regras sensíveis, segmentação por usuário/organizador/evento e uma única camada de integração. O checklist de migração está em [Roadmap e fora de escopo](../architecture/11-roadmap.md#todo--migrar-feature-flags-para-o-posthog).
 
 **`EventRoleGuard` (`apps/api/src/security/guards/event-role.guard.ts`) deixa `admin_geral` passar direto**, sem precisar de `PapelAcesso` — é o que faz o Suporte funcionar reaproveitando as rotas normais de tickets/eventos (`GET /events/:id`, `GET /events/:id/ingressos`, `GET /events/:id/checkin/leituras`) sem nenhuma rota nova pra ler esses dados. Isso vale pra **toda** rota gated por esse guard, não só as consumidas pelo Suporte — um `admin_geral` tecnicamente também consegue chamar rotas de escrita (editar/cancelar ingresso, etc.) que o frontend do admin não expõe hoje.
 

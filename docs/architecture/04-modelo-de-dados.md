@@ -27,6 +27,8 @@ Baseado no resumo do produto, com adições para RBAC por evento, split financei
 - **Indicacao** (id, indicador_id, indicado_id único, oferta_id, percentual_beneficio_organizador, criado_em) — vínculo permanente e imutável na origem. A porcentagem é um snapshot da oferta aceita no cadastro e vale igualmente em todos os eventos pagos do organizador
 - **ComissaoIndicacao** (id, indicacao_id, evento_id, transacao_id único, percentual_base, percentual_bonus, base_calculo, valor, status, chave_idempotencia única, timestamps) — ledger preparado para a liquidação real. Sem gateway, o painel calcula estimativas e não cria pagamentos fictícios
 
+> **TODO — PostHog:** `FeatureFlag` local e seu CRUD administrativo são uma implementação transitória. A evolução planejada usa PostHog Feature Flags como fonte de verdade e mantém validações de funcionalidades sensíveis no backend. Durante a migração não devem existir duas fontes editáveis de estado. Ver o [checklist do roadmap](11-roadmap.md#todo--migrar-feature-flags-para-o-posthog).
+
 ## Constraints críticas no nível do banco (não só na aplicação)
 
 - Unique + lock otimista em `Ingresso.status` para impedir check-in duplicado em corrida (race condition)

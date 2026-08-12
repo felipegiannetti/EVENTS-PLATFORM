@@ -4,7 +4,7 @@ import { ESCOPO_ACORDO_COMERCIAL } from "../enums";
 export const criarAcordoComercialSchema = z.object({
   organizadorId: z.string().uuid(),
   eventoId: z.string().uuid().optional(),
-  percentualOrganizador: z.number().min(0).max(12),
+  percentualOrganizador: z.number().min(0).max(4),
   escopo: z.enum(ESCOPO_ACORDO_COMERCIAL),
   eventosRestantes: z.number().int().positive().optional(),
 }).superRefine((dados, ctx) => {
@@ -36,6 +36,9 @@ export const organizadorAdminResponseSchema = z.object({
   email: z.string().email(),
   indicado: z.boolean(),
   percentualBeneficioIndicacao: z.number(),
+  indicadorNome: z.string().nullable(),
+  indicadorEmail: z.string().email().nullable(),
+  percentualIndicador: z.number(),
   eventos: z.array(z.object({ id: z.string().uuid(), nome: z.string(), data: z.string().datetime() })),
   acordos: z.array(acordoComercialResponseSchema),
 });

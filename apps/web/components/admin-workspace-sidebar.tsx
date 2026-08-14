@@ -9,6 +9,7 @@ import {
   LandmarkIcon,
   LayoutDashboard,
   LifeBuoy,
+  ListChecks,
   Menu,
   ShieldCheck,
   Sparkles,
@@ -24,6 +25,7 @@ const ITENS = [
   { href: "/admin/acordos", label: "Administrador", descricao: "Acordos comerciais", icon: LandmarkIcon },
   { href: "/admin/sistema", label: "Sistema", descricao: "Funcionalidades globais", icon: ToggleLeft },
   { href: "/admin/financeiro", label: "Financeiro", descricao: "Consolidado financeiro", icon: Wallet },
+  { href: "/admin/auditoria", label: "Auditoria", descricao: "Histórico de ações", icon: ListChecks },
 ];
 
 export function AdminWorkspaceSidebar() {

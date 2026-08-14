@@ -4,7 +4,14 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Gift } from "lucide-react";
-import { validarCpf, validarCnpj, type OfertaIndicacaoPublicaResponse, type TipoPessoa } from "@events-platform/shared-types";
+import {
+  validarCpf,
+  validarCnpj,
+  senhaEhForte,
+  MENSAGEM_SENHA_FRACA,
+  type OfertaIndicacaoPublicaResponse,
+  type TipoPessoa,
+} from "@events-platform/shared-types";
 import { useAuth } from "@/lib/auth-context";
 import { useNavigationLoading } from "@/lib/navigation-loading";
 import { ApiError } from "@/lib/api-client";
@@ -41,6 +48,7 @@ function FormularioRegistro() {
   const [erro, setErro] = useState<string | null>(null);
   const [erroDocumento, setErroDocumento] = useState<string | null>(null);
   const [erroConfirmarSenha, setErroConfirmarSenha] = useState<string | null>(null);
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -65,9 +73,17 @@ function FormularioRegistro() {
     setErroConfirmarSenha(confirmarSenha && confirmarSenha !== senha ? "As senhas não coincidem" : null);
   }
 
+  function onSenhaBlur() {
+    setErroSenha(senha && !senhaEhForte(senha) ? MENSAGEM_SENHA_FRACA : null);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setErro(null);
+    if (!senhaEhForte(senha)) {
+      setErroSenha(MENSAGEM_SENHA_FRACA);
+      return;
+    }
     if (senha !== confirmarSenha) {
       setErroConfirmarSenha("As senhas não coincidem");
       return;
@@ -178,8 +194,11 @@ function FormularioRegistro() {
             type="password"
             required
             minLength={8}
+            ajuda="Mínimo 8 caracteres, com maiúscula, minúscula e número."
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
+            onBlur={onSenhaBlur}
+            error={erroSenha ?? undefined}
           />
           <Input
             id="confirmarSenha"

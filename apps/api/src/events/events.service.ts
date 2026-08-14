@@ -22,6 +22,7 @@ import {
   PAPEL_ACESSO_REPOSITORY,
   type PapelAcessoRepository,
 } from "./repository/papel-acesso.repository";
+import { detectarMimeReal } from "../infra/arquivo/detectar-mime-real.util";
 import {
   CUPOM_DESCONTO_REPOSITORY,
   type CupomDescontoRepository,
@@ -211,20 +212,26 @@ export class EventsService {
     });
   }
 
-  /** Banner salvo como bytes direto no Postgres — ver docs/architecture/04-modelo-de-dados.md. */
-  async atualizarBanner(eventoId: string, bytes: Buffer, mimeType: string): Promise<void> {
+  /**
+   * Banner salvo como bytes direto no Postgres — ver docs/architecture/04-modelo-de-dados.md.
+   * O Content-Type declarado pelo navegador é só um chute do cliente — quem decide o mimeType
+   * gravado (e servido depois em GET :id/banner) são os magic bytes reais do arquivo, checados via
+   * `file-type`. Um .exe renomeado pra .png com Content-Type falsificado é rejeitado aqui.
+   */
+  async atualizarBanner(eventoId: string, bytes: Buffer): Promise<void> {
     await this.buscarEvento(eventoId);
-    if (!TIPOS_MIME_BANNER_ACEITOS.includes(mimeType as (typeof TIPOS_MIME_BANNER_ACEITOS)[number])) {
-      throw new BannerInvalidoException(
-        `Formato de imagem não aceito (use ${TIPOS_MIME_BANNER_ACEITOS.join(", ")}).`,
-      );
-    }
     if (bytes.byteLength > TAMANHO_MAXIMO_BANNER_BYTES) {
       throw new BannerInvalidoException(
         `Imagem muito grande — o máximo é ${TAMANHO_MAXIMO_BANNER_BYTES / (1024 * 1024)}MB.`,
       );
     }
-    await this.eventoRepository.atualizarBanner(eventoId, bytes, mimeType);
+    const mimeReal = detectarMimeReal(bytes);
+    if (!mimeReal || !TIPOS_MIME_BANNER_ACEITOS.includes(mimeReal as (typeof TIPOS_MIME_BANNER_ACEITOS)[number])) {
+      throw new BannerInvalidoException(
+        `Formato de imagem não aceito (use ${TIPOS_MIME_BANNER_ACEITOS.join(", ")}).`,
+      );
+    }
+    await this.eventoRepository.atualizarBanner(eventoId, bytes, mimeReal);
   }
 
   async buscarBanner(eventoId: string): Promise<BannerEvento | null> {

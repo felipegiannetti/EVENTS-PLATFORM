@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { Public } from "../security/decorators/public.decorator";
 import { TicketsService } from "./tickets.service";
 import { ReservaMapper } from "./mapper/reserva.mapper";
@@ -21,6 +22,7 @@ export class ReservasPublicasController {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post("lotes/:loteId/reservas")
   async reservar(@Param("id") eventoId: string, @Param("loteId") loteId: string, @Body() dto: CriarReservaDto) {
     const reserva = await this.ticketsService.reservar(eventoId, loteId, dto);
@@ -28,6 +30,7 @@ export class ReservasPublicasController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("reservas/:reservaId")
   async buscar(@Param("id") eventoId: string, @Param("reservaId") reservaId: string) {
     const reserva = await this.ticketsService.buscarReserva(reservaId);
@@ -35,6 +38,7 @@ export class ReservasPublicasController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post("reservas/:reservaId/confirmar")
   async confirmar(
     @Param("id") eventoId: string,
@@ -46,6 +50,7 @@ export class ReservasPublicasController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post("reservas/:reservaId/cancelar")
   async cancelar(@Param("id") eventoId: string, @Param("reservaId") reservaId: string) {
     await this.ticketsService.cancelarReserva(eventoId, reservaId);

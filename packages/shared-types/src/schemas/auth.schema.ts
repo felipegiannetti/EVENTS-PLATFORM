@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TIPO_PESSOA } from "../enums";
 import { validarCnpj, validarCpf } from "../validators/documento";
+import { MENSAGEM_SENHA_FRACA, senhaEhForte } from "../validators/senha";
 
 /**
  * Pessoa física precisa de CPF + data de nascimento; pessoa jurídica precisa de CNPJ (sem data
@@ -12,7 +13,7 @@ export const registerSchema = z
   .object({
     nome: z.string().min(2).max(160),
     email: z.string().email(),
-    senha: z.string().min(8).max(72),
+    senha: z.string().min(8).max(72).refine(senhaEhForte, { message: MENSAGEM_SENHA_FRACA }),
     tipoPessoa: z.enum(TIPO_PESSOA),
     documento: z.string().min(11).max(18),
     dataNascimento: z.string().date().optional(),

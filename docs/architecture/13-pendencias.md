@@ -15,6 +15,11 @@ Checklist único juntando tudo que está registrado como pendente espalhado pelo
 - [ ] **Credenciais reais do Google OAuth** — `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` vêm vazios em `.env`; sem preencher, o botão "Continuar com Google" redireciona mas o Google rejeita o `client_id`. Criar em https://console.cloud.google.com/apis/credentials.
 - [ ] **Confirmação real de CPF/CNPJ** (não só dígito verificador) — exigiria serviço externo pago (SERPRO/Serasa) ou a checagem que o próprio gateway de pagamento faria no onboarding. **Adiado a pedido do usuário.**
 
+## Segurança (itens de menor prioridade da rodada de hardening — ver [06-seguranca.md](06-seguranca.md#rodada-de-hardening-baseada-em-checklist-de-43-requisitos-de-segurança))
+
+- [ ] **TTL de sessão diferenciado por papel** — hoje `admin_geral` tem o mesmo TTL de access/refresh token que qualquer outro usuário (`AuthService.emitirSessao`). Sessão mais curta e/ou timeout de inatividade pra admin seria mais seguro, mas não foi feito ainda.
+- [ ] **Logging estruturado com contexto** — `LoggingInterceptor` grava só `método + rota + ms` (+ mensagem de erro), sem userId/IP, só console (nada persistido). Formato JSON estruturado + correlação com `AuditLog` fica pra quando existir infraestrutura de agregação de logs (categoria de infraestrutura, fora do nível de código).
+
 ## Suporte ao usuário final
 
 - [ ] **Canal de suporte / FAQ / fallback amigável** — hoje um erro inesperado do backend aparece cru na tela (`err.message`). Não existe FAQ, central de ajuda, nem canal de contato real por trás do link "Ajuda" do rodapé.

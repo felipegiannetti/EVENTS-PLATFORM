@@ -249,3 +249,18 @@ Quinta rodada (QR code visível pro comprador + PDF anexado ao email), via brows
 - **Upload multipart via `curl -F "campo=@caminho"` neste ambiente às vezes falha silenciosamente (resposta vazia ou `curl: (26)`) quando o arquivo está em `/tmp`** — usar um caminho dentro da pasta de scratchpad da sessão resolve; é uma peculiaridade de resolução de caminho da ferramenta de shell, não um bug do upload em si.
 
 **Ambiente sandbox desta sessão não tinha Docker** — a instalação do Docker Desktop e a subida do Postgres (`docker-compose up -d`) foram feitas pelo usuário na própria máquina antes da primeira verificação.
+
+## Segurança — rodada de hardening
+
+Levantamento comparando o código real contra um checklist externo de 43 requisitos de segurança (OWASP/LGPD/Marco Civil), MFA excluído de propósito e itens só-institucionais marcados não-aplicável. Detalhe completo, item por item, em [06-seguranca.md](../architecture/06-seguranca.md#rodada-de-hardening-baseada-em-checklist-de-43-requisitos-de-segurança). Resumo do que mudou:
+
+- Rate limiting em endpoints públicos que só tinham o default global (reserva, cupom especial, Google OAuth).
+- Bloqueio temporário de conta após 5 logins falhos seguidos (`Usuario.tentativasFalhas`/`bloqueadoAte`).
+- Exclusão de conta agora anonimiza os ingressos do usuário (LGPD) e não crasha mais se ele tiver histórico de auditoria (`AuditLog.usuario` virou `SetNull`).
+- `Usuario.documento` e `Ingresso.compradorDocumento` (CPF/CNPJ) criptografados (AES-256-GCM, mesmo padrão de `ContaBancaria`), com índice de busca separado (`Usuario.documentoHash`).
+- Upload de banner valida magic bytes reais do arquivo, não só o `Content-Type` declarado.
+- `AuditLog` passou a cobrir login/login falho/troca de senha/exclusão de conta, com tela de leitura nova (`/admin/auditoria`) — antes só existia o `INSERT`.
+- Senha exige complexidade mínima (maiúscula+minúscula+número), não só tamanho.
+- `helmet` (CSP/HSTS/Permissions-Policy) e Swagger/OpenAPI (`/docs`, fora de produção) adicionados na API.
+
+**Novas variáveis de ambiente**: `DOCUMENTO_ENCRYPTION_KEY` (32 bytes hex, mesmo formato de `CONTA_BANCARIA_ENCRYPTION_KEY`) — ver `.env.example`.

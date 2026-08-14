@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LandmarkIcon, LifeBuoy, ToggleLeft, Wallet } from "lucide-react";
+import { LandmarkIcon, LifeBuoy, ListChecks, ToggleLeft, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 const SECOES = [
@@ -7,6 +7,7 @@ const SECOES = [
   { href: "/admin/acordos", label: "Administrador", icon: LandmarkIcon, descricao: "Acordos comerciais — quanto da taxa de 12% vai para cada organizador." },
   { href: "/admin/sistema", label: "Sistema", icon: ToggleLeft, descricao: "Ligue e desligue funcionalidades da plataforma, e reative quando quiser." },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, descricao: "Consolidado de vendas, taxa retida e repasse estimado por evento." },
+  { href: "/admin/auditoria", label: "Auditoria", icon: ListChecks, descricao: "Histórico de ações administrativas e eventos de autenticação sensíveis." },
 ];
 
 export default function AdminOverviewPage() {

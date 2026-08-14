@@ -86,9 +86,12 @@ model Usuario {
   senhaHash       String?
   papelGlobal     PapelGlobal @default(usuario)
   tipoPessoa      TipoPessoa  @default(fisica)
-  /// CPF (pessoa física) ou CNPJ (pessoa jurídica) — só dígitos, validado por dígito verificador no registerSchema.
-  /// Nulo até a conta criada via Google completar o cadastro (documento não vem do Google).
-  documento       String?     @unique
+  /// CPF (pessoa física) ou CNPJ (pessoa jurídica) — criptografado (AES-256-GCM, ver campo-criptografado.util.ts),
+  /// não comparável direto. Nulo até a conta criada via Google completar o cadastro (documento não vem do Google).
+  documento       String?
+  /// HMAC-SHA256 determinístico do documento em texto puro — só pra unicidade/busca exata, já que
+  /// o ciphertext acima usa IV aleatório (não indexável). Ver hashDeterministico().
+  documentoHash   String?     @unique
   /// Só pessoa física — empresa não tem data de nascimento.
   dataNascimento  DateTime?
   /// Obrigatório no cadastro normal (registerSchema); nulo pra conta criada via Google até completar o cadastro.
@@ -96,6 +99,10 @@ model Usuario {
   /// ID da conta Google vinculada — nulo pra conta que nunca usou "Continuar com Google".
   googleId        String?     @unique
   asaasSubcontaId String?
+  /// Contador de logins falhos consecutivos — zera em login bem-sucedido ou quando o bloqueio expira.
+  tentativasFalhas Int        @default(0)
+  /// Se no futuro (bloqueadoAte > agora), login recusado mesmo com senha certa — ver AuthService.validarCredenciais.
+  bloqueadoAte    DateTime?
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
@@ -417,9 +424,11 @@ model FeatureFlag {
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  id     String @id @default(uuid())
+  /// Nulo quando o autor da ação exclui a própria conta depois — SetNull em vez de Restrict, pra
+  /// não travar a exclusão de conta (LGPD, direito ao esquecimento) só porque ela tem histórico.
+  usuarioId   String?
+  usuario     Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
   acao        String
   entidade    String
   entidadeId  String

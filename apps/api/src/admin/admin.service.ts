@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
   AcordoComercialResponse,
+  AuditLogResponse,
   CriarAcordoComercialInput,
   CriarFeatureFlagInput,
   EventoAdminResponse,
@@ -288,6 +289,35 @@ export class AdminService {
     );
 
     return { totais, eventos: linhas };
+  }
+
+  /** Visão de auditoria — só leitura, mais recentes primeiro; busca por ação, entidade ou autor. */
+  async listarAuditoria(busca?: string): Promise<AuditLogResponse[]> {
+    const registros = await this.prisma.auditLog.findMany({
+      where: busca
+        ? {
+            OR: [
+              { acao: { contains: busca, mode: "insensitive" } },
+              { entidade: { contains: busca, mode: "insensitive" } },
+              { usuario: { nome: { contains: busca, mode: "insensitive" } } },
+              { usuario: { email: { contains: busca, mode: "insensitive" } } },
+            ],
+          }
+        : undefined,
+      orderBy: { criadoEm: "desc" },
+      take: 200,
+      include: { usuario: { select: { nome: true, email: true } } },
+    });
+    return registros.map((registro) => ({
+      id: registro.id,
+      acao: registro.acao,
+      entidade: registro.entidade,
+      entidadeId: registro.entidadeId,
+      autorNome: registro.usuario?.nome ?? null,
+      autorEmail: registro.usuario?.email ?? null,
+      ip: registro.ip,
+      criadoEm: registro.criadoEm.toISOString(),
+    }));
   }
 
   private mapearAcordo(acordo: {

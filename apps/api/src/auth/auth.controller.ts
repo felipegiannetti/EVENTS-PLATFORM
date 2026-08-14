@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { ApiTags } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import type { AuthResponse } from "@events-platform/shared-types";
 import { Public } from "../security/decorators/public.decorator";
@@ -34,6 +35,7 @@ import { RefreshTokenInvalidoException } from "./exceptions/refresh-token-invali
 
 const REFRESH_COOKIE = "refresh_token";
 
+@ApiTags("auth")
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -69,6 +71,7 @@ export class AuthController {
 
   /** Só dispara o redirect pro consentimento do Google — a lógica em si vive no callback abaixo. */
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
   @Get("google")
   iniciarLoginGoogle() {}
@@ -79,6 +82,7 @@ export class AuthController {
    * na query string, que a página /entrar-google lê e joga pro AuthContext (ver apps/web).
    */
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(GoogleAuthGuard)
   @Get("google/callback")
   async callbackGoogle(

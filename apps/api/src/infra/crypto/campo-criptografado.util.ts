@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 
 const ALGORITMO = "aes-256-gcm";
 
@@ -27,4 +27,15 @@ export function descriptografar(valorCriptografado: string, chaveHex: string): s
   decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
   const textoPuro = Buffer.concat([decipher.update(Buffer.from(ciphertextHex, "hex")), decipher.final()]);
   return textoPuro.toString("utf8");
+}
+
+/**
+ * Hash determinístico (HMAC-SHA256) para servir de índice de busca/unicidade sobre um campo
+ * criptografado — AES-GCM usa IV aleatório de propósito (mesmo texto puro gera ciphertext
+ * diferente a cada vez), então não dá pra comparar/indexar o ciphertext direto. Usado hoje só
+ * pra `Usuario.documento` (precisa continuar único e buscável por valor exato).
+ */
+export function hashDeterministico(textoPuro: string, chaveHex: string): string {
+  const chave = Buffer.from(chaveHex, "hex");
+  return createHmac("sha256", chave).update(textoPuro).digest("hex");
 }

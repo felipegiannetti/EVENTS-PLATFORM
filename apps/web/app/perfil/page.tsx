@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, HandCoins, IdCard, KeyRound, MapPin, ShieldCheck, Ticket, Trash2, User } from "lucide-react";
 import type { EventoResponse, MeuIngressoResponse, UsuarioResponse } from "@events-platform/shared-types";
-import { formatarLocalizacaoEvento, ROTULO_CATEGORIA_EVENTO } from "@events-platform/shared-types";
+import { formatarLocalizacaoEvento, ROTULO_CATEGORIA_EVENTO, senhaEhForte, MENSAGEM_SENHA_FRACA } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,6 +228,10 @@ function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: str
     e.preventDefault();
     setErroSenha(null);
     setSucessoSenha(false);
+    if (!senhaEhForte(novaSenha)) {
+      setErroSenha(MENSAGEM_SENHA_FRACA);
+      return;
+    }
     if (novaSenha !== confirmarNovaSenha) {
       setErroSenha("As senhas não coincidem.");
       return;
@@ -296,7 +300,16 @@ function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: str
             <form onSubmit={onAlterarSenha} className="mt-4 flex flex-col gap-4">
               <Input id="senhaAtual" label="Senha atual" type="password" required value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Input id="novaSenha" label="Nova senha" type="password" required minLength={8} value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} />
+                <Input
+                  id="novaSenha"
+                  label="Nova senha"
+                  type="password"
+                  required
+                  minLength={8}
+                  ajuda="Mínimo 8 caracteres, com maiúscula, minúscula e número."
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                />
                 <Input
                   id="confirmarNovaSenha"
                   label="Confirmar nova senha"

@@ -15,5 +15,7 @@ export class UsuarioModel {
     public readonly telefone: string | null,
     public readonly googleId: string | null,
     public readonly criadoEm: Date,
+    public readonly tentativasFalhas: number = 0,
+    public readonly bloqueadoAte: Date | null = null,
   ) {}
 }

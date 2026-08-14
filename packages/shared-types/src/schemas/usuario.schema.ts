@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PAPEL_GLOBAL, TIPO_PESSOA } from "../enums";
+import { MENSAGEM_SENHA_FRACA, senhaEhForte } from "../validators/senha";
 
 export const usuarioResponseSchema = z.object({
   id: z.string().uuid(),
@@ -34,7 +35,7 @@ export type AlterarEmailInput = z.infer<typeof alterarEmailSchema>;
 
 export const alterarSenhaSchema = z.object({
   senhaAtual: z.string().min(1),
-  novaSenha: z.string().min(8),
+  novaSenha: z.string().min(8).max(72).refine(senhaEhForte, { message: MENSAGEM_SENHA_FRACA }),
 });
 export type AlterarSenhaInput = z.infer<typeof alterarSenhaSchema>;
 

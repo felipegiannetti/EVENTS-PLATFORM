@@ -15,6 +15,8 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
+import { ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { TAMANHO_MAXIMO_BANNER_BYTES } from "@events-platform/shared-types";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
@@ -40,6 +42,7 @@ import type { CupomValidacaoPublicaResponse } from "@events-platform/shared-type
 const PAPEIS_LEITURA = ["owner", "gestor", "view", "checkin_operator"] as const;
 const PAPEIS_EDICAO = ["owner", "gestor"] as const;
 
+@ApiTags("events")
 @Controller("events")
 export class EventsController {
   constructor(
@@ -79,6 +82,7 @@ export class EventsController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("public/:id/cupom/:codigo")
   async validarCupomPublico(@Param("id") id: string, @Param("codigo") codigo: string): Promise<CupomValidacaoPublicaResponse> {
     const cupom = await this.eventsService.validarCupomPublico(id, codigo);
@@ -89,7 +93,9 @@ export class EventsController {
     return { codigo: cupom.codigo, especial: false, tipo: cupom.tipo, valor: cupom.valor };
   }
 
+  /** Endpoint de senha (cupom especial) — limite baixo pra dificultar força-bruta. */
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("public/:id/cupom/:codigo/desbloquear")
   async desbloquearCupom(
     @Param("id") id: string,
@@ -234,7 +240,7 @@ export class EventsController {
     @Param("id") id: string,
     @UploadedFile() arquivo: Express.Multer.File,
   ) {
-    await this.eventsService.atualizarBanner(id, arquivo.buffer, arquivo.mimetype);
+    await this.eventsService.atualizarBanner(id, arquivo.buffer);
     return { ok: true };
   }
 

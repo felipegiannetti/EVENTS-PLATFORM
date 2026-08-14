@@ -1,5 +1,6 @@
 import type {
   AcordoComercialResponse,
+  AuditLogResponse,
   CriarAcordoComercialInput,
   EventoAdminResponse,
   FeatureFlagResponse,
@@ -62,4 +63,10 @@ export function alternarFeatureFlag(id: string, token: string) {
 /** Espaço Financeiro — consolidado entre todos os eventos, mesmo cálculo do financeiro por evento. */
 export function buscarFinanceiroAdmin(token: string) {
   return apiFetch<FinanceiroAdminResponse>("/admin/financeiro", {}, token);
+}
+
+/** Espaço de Auditoria — só leitura, mais recentes primeiro. */
+export function listarAuditoria(busca: string, token: string) {
+  const query = busca.trim() ? `?busca=${encodeURIComponent(busca.trim())}` : "";
+  return apiFetch<AuditLogResponse[]>(`/admin/auditoria${query}`, {}, token);
 }

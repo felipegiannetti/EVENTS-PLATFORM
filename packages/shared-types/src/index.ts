@@ -16,3 +16,4 @@ export * from "./schemas/lista-off.schema";
 export * from "./data/bancos-brasil";
 export * from "./data/paises";
 export * from "./validators/documento";
+export * from "./validators/senha";

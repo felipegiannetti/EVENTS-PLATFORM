@@ -99,3 +99,17 @@ export const financeiroAdminResponseSchema = z.object({
   eventos: z.array(financeiroAdminEventoResponseSchema),
 });
 export type FinanceiroAdminResponse = z.infer<typeof financeiroAdminResponseSchema>;
+
+/** Visão de auditoria — só leitura, mais recentes primeiro (GET /admin/auditoria). */
+export const auditLogResponseSchema = z.object({
+  id: z.string().uuid(),
+  acao: z.string(),
+  entidade: z.string(),
+  entidadeId: z.string(),
+  /** Nulo quando o autor excluiu a própria conta depois (AuditLog.usuario é SetNull). */
+  autorNome: z.string().nullable(),
+  autorEmail: z.string().nullable(),
+  ip: z.string().nullable(),
+  criadoEm: z.string().datetime(),
+});
+export type AuditLogResponse = z.infer<typeof auditLogResponseSchema>;

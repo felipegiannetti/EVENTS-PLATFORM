@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import { ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
@@ -21,6 +22,7 @@ const PAPEIS_CHECKIN = ["owner", "gestor", "checkin_operator"] as const;
  * Rotas aninhadas em /events/:id (em vez de /tickets/:id soltas) porque o EventRoleGuard
  * precisa do eventoId na própria rota para checar o papel do usuário naquele evento.
  */
+@ApiTags("tickets")
 @Controller("events/:id")
 export class TicketsController {
   constructor(

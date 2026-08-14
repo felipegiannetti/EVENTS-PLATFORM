@@ -21,6 +21,7 @@ import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontra
 import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.exception";
 import { ContaComEventosException } from "./exceptions/conta-com-eventos.exception";
 import { ContaSemSenhaException } from "./exceptions/conta-sem-senha.exception";
+import { ContaBloqueadaException } from "./exceptions/conta-bloqueada.exception";
 import { PrismaService } from "../infra/prisma/prisma.service";
 
 export interface SessaoContexto {
@@ -30,6 +31,9 @@ export interface SessaoContexto {
 
 @Injectable()
 export class AuthService {
+  private static readonly MAX_TENTATIVAS_LOGIN = 5;
+  private static readonly BLOQUEIO_MINUTOS = 15;
+
   private readonly refreshTtlDays: number;
 
   constructor(
@@ -144,6 +148,9 @@ export class AuthService {
     const senhaHash = await argon2.hash(novaSenha, { type: argon2.argon2id });
     await this.usuarioRepository.atualizar(usuarioId, { senhaHash });
     await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
+    await this.prisma.auditLog.create({
+      data: { usuarioId, acao: "ALTERAR_SENHA", entidade: "Usuario", entidadeId: usuarioId },
+    });
   }
 
   async deletarConta(usuarioId: string, senhaAtual: string): Promise<void> {
@@ -166,8 +173,34 @@ export class AuthService {
     if (possuiVinculoIndicacao || possuiPrograma) {
       throw new ConflictException("Sua conta possui vínculos financeiros de indicação e não pode ser excluída diretamente.");
     }
+    // AcordoComercial.organizador/definidoPorAdmin é onDelete: Restrict no schema — sem essa checagem,
+    // excluir uma conta com acordo comercial vinculado estouraria uma violação de FK crua do Prisma
+    // em vez de um erro de domínio amigável. (AuditLog.usuario já é SetNull — não precisa checar.)
+    const possuiAcordoComercial = await this.prisma.acordoComercial.findFirst({
+      where: { OR: [{ organizadorId: usuarioId }, { definidoPorAdminId: usuarioId }] },
+      select: { id: true },
+    });
+    if (possuiAcordoComercial) {
+      throw new ConflictException(
+        "Sua conta possui acordos comerciais vinculados e não pode ser excluída diretamente. Fale com o suporte.",
+      );
+    }
+
     await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
-    await this.usuarioRepository.remover(usuarioId);
+    await this.prisma.$transaction(async (tx) => {
+      // Ingresso não tem FK pra Usuario (compradorEmail é só texto) — sem isso, o nome/email/documento
+      // do comprador sobrevive intacto à exclusão da conta (gap de LGPD, direito ao esquecimento).
+      await tx.ingresso.updateMany({
+        where: { compradorEmail: usuario.email },
+        data: { compradorNome: "Usuário excluído", compradorEmail: null, compradorDocumento: null },
+      });
+      // Escrito antes do delete, mas o onDelete: SetNull do schema zera usuarioId automaticamente
+      // quando o usuario.delete abaixo roda — o registro do evento sobrevive à conta.
+      await tx.auditLog.create({
+        data: { usuarioId, acao: "EXCLUIR_CONTA", entidade: "Usuario", entidadeId: usuarioId },
+      });
+      await tx.usuario.delete({ where: { id: usuarioId } });
+    });
   }
 
   async validarCredenciais(email: string, senha: string): Promise<UsuarioModel | null> {
@@ -176,11 +209,40 @@ export class AuthService {
     if (!usuario || !usuario.senhaHash) {
       return null;
     }
+    if (usuario.bloqueadoAte && usuario.bloqueadoAte.getTime() > Date.now()) {
+      throw new ContaBloqueadaException(usuario.bloqueadoAte);
+    }
     const senhaValida = await argon2.verify(usuario.senhaHash, senha);
-    return senhaValida ? usuario : null;
+    if (!senhaValida) {
+      const atualizado = await this.usuarioRepository.incrementarTentativasFalhas(usuario.id);
+      await this.prisma.auditLog.create({
+        data: { usuarioId: usuario.id, acao: "LOGIN_FALHO", entidade: "Usuario", entidadeId: usuario.id },
+      });
+      if (atualizado.tentativasFalhas >= AuthService.MAX_TENTATIVAS_LOGIN) {
+        await this.usuarioRepository.bloquearAte(
+          usuario.id,
+          new Date(Date.now() + AuthService.BLOQUEIO_MINUTOS * 60_000),
+        );
+      }
+      return null;
+    }
+    if (usuario.tentativasFalhas > 0 || usuario.bloqueadoAte) {
+      await this.usuarioRepository.resetarTentativasFalhas(usuario.id);
+    }
+    return usuario;
   }
 
   async login(usuario: UsuarioModel, contexto: SessaoContexto = {}): Promise<AuthResponse> {
+    await this.prisma.auditLog.create({
+      data: {
+        usuarioId: usuario.id,
+        acao: "LOGIN",
+        entidade: "Usuario",
+        entidadeId: usuario.id,
+        ip: contexto.ip,
+        dispositivo: contexto.userAgent,
+      },
+    });
     return this.emitirSessao(usuario, randomUUID(), contexto);
   }
 

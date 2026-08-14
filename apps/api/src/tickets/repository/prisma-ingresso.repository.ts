@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { Ingresso } from "@prisma/client";
 import type { StatusIngresso } from "@events-platform/shared-types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
+import { criptografar, descriptografar } from "../../infra/crypto/campo-criptografado.util";
 import { IngressoModel } from "../model/ingresso.model";
 import { MeuIngressoModel } from "../model/meu-ingresso.model";
 import type {
@@ -15,12 +17,19 @@ const INCLUI_CUPOM = { cupomDesconto: { select: { codigo: true } } } as const;
 
 type IngressoComCupom = Ingresso & { cupomDesconto: { codigo: string } | null };
 
+/** compradorDocumento (CPF/CNPJ) é criptografado (AES-256-GCM) — ver campo-criptografado.util.ts. */
 @Injectable()
 export class PrismaIngressoRepository implements IngressoRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async criar(data: CriarIngressoData): Promise<IngressoModel> {
-    const ingresso = await this.prisma.ingresso.create({ data, include: INCLUI_CUPOM });
+    const ingresso = await this.prisma.ingresso.create({
+      data: { ...data, compradorDocumento: this.criptografarSePresente(data.compradorDocumento) },
+      include: INCLUI_CUPOM,
+    });
     return this.toModel(ingresso);
   }
 
@@ -45,7 +54,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
       data: {
         compradorNome: data.compradorNome ?? null,
         compradorEmail: data.compradorEmail,
-        compradorDocumento: data.compradorDocumento ?? null,
+        compradorDocumento: this.criptografarSePresente(data.compradorDocumento),
       },
       include: INCLUI_CUPOM,
     });
@@ -75,7 +84,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
         status: "valido",
         compradorNome: data.compradorNome,
         compradorEmail: data.compradorEmail,
-        compradorDocumento: data.compradorDocumento,
+        compradorDocumento: this.criptografarSePresente(data.compradorDocumento),
         qrToken: data.qrToken,
         destinatarioTransferenciaEmail: null,
         version: { increment: 1 },
@@ -156,6 +165,16 @@ export class PrismaIngressoRepository implements IngressoRepository {
     );
   }
 
+  private chave(): string {
+    return this.config.getOrThrow<string>("DOCUMENTO_ENCRYPTION_KEY");
+  }
+
+  private criptografarSePresente(valor: string | null | undefined): string | null | undefined {
+    if (valor === undefined) return undefined;
+    if (valor === null) return null;
+    return criptografar(valor, this.chave());
+  }
+
   private toModel(ingresso: IngressoComCupom): IngressoModel {
     return new IngressoModel(
       ingresso.id,
@@ -168,7 +187,7 @@ export class PrismaIngressoRepository implements IngressoRepository {
       ingresso.cancelamentoFlexivel,
       ingresso.compradorNome,
       ingresso.compradorEmail,
-      ingresso.compradorDocumento,
+      ingresso.compradorDocumento ? descriptografar(ingresso.compradorDocumento, this.chave()) : ingresso.compradorDocumento,
       ingresso.destinatarioTransferenciaEmail,
       ingresso.cupomDescontoId,
       ingresso.cupomDesconto?.codigo ?? null,

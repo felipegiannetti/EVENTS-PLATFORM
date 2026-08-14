@@ -57,4 +57,9 @@ export class AdminController {
   buscarFinanceiro() {
     return this.adminService.buscarFinanceiro();
   }
+
+  @Get("auditoria")
+  listarAuditoria(@Query("busca") busca?: string) {
+    return this.adminService.listarAuditoria(busca);
+  }
 }

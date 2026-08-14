@@ -16,13 +16,17 @@ export interface CriarUsuarioData {
   googleId?: string;
 }
 
+/**
+ * documento fica de fora de propósito — é imutável por design (ver docs) e, sendo criptografado
+ * (PrismaUsuarioRepository), passar por aqui gravaria em texto puro sem hash de índice. Se um dia
+ * precisar mudar, use um método dedicado que trate criptografia + documentoHash como `criar` já faz.
+ */
 export interface AtualizarUsuarioData {
   nome?: string;
   dataNascimento?: Date;
   email?: string;
   senhaHash?: string;
   telefone?: string;
-  documento?: string;
   tipoPessoa?: TipoPessoa;
   googleId?: string;
 }
@@ -35,4 +39,10 @@ export interface UsuarioRepository {
   buscarPorGoogleId(googleId: string): Promise<UsuarioModel | null>;
   atualizar(id: string, data: AtualizarUsuarioData): Promise<UsuarioModel>;
   remover(id: string): Promise<void>;
+  /** Incrementa o contador de login falho e retorna o usuário atualizado (pro service decidir se bloqueia). */
+  incrementarTentativasFalhas(id: string): Promise<UsuarioModel>;
+  /** Bloqueia login até a data informada e zera o contador (o bloqueio em si já é o "reset"). */
+  bloquearAte(id: string, ate: Date): Promise<void>;
+  /** Zera contador e bloqueio — chamado em login bem-sucedido. */
+  resetarTentativasFalhas(id: string): Promise<void>;
 }

@@ -1,5 +1,5 @@
 # RARO Tickets
-
+**EM DESENVOLVIMENTO**
 Plataforma para descoberta, criação e gestão de eventos e ingressos.
 
 ## Desenvolvimento local

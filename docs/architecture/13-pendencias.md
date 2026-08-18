@@ -47,8 +47,7 @@ Nada disso existe ainda — hoje **todo ingresso nasce de emissão manual pelo o
 
 ## Admin
 
-- [ ] **Controle de contas de usuário** — o painel `/admin` hoje só cobre Acordos comerciais, Suporte (ver eventos), Sistema (flags) e Financeiro (consolidado). Não existe uma tela de gestão de contas em si (listar/suspender/promover usuário, resetar senha administrativamente, etc.) — só o CRUD de `AcordoComercial` por organizador.
-- [ ] **Visão de auditoria** — `AuditLog` já grava ações administrativas (acordos, feature flags), mas não existe nenhuma tela que leia esse histórico. Só existe o `INSERT`, nunca o `SELECT`.
+- [ ] **Controle de contas de usuário** — o painel `/admin` hoje cobre Acordos comerciais, Suporte (ver eventos), Sistema (flags), Financeiro (consolidado) e Auditoria (histórico). Não existe uma tela de gestão de contas em si (listar/suspender/promover usuário, resetar senha administrativamente, etc.) — só o CRUD de `AcordoComercial` por organizador.
 - [ ] **Formato de reembolso em massa ao cancelar/deletar um evento abusivo/inapropriado** — ideia levantada pelo usuário (devolver o dinheiro de todos os compradores de um evento removido por violação de política), registrada aqui pra desenhar quando fizer sentido — ainda não modelada nem implementada. Depende de checkout self-service existir primeiro (sem cobrança real, não há o que devolver).
 
 ## Carrinho abandonado

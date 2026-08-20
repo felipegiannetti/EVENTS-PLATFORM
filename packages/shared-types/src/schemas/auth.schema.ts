@@ -60,3 +60,7 @@ export type ConfirmarEmailInput = z.infer<typeof confirmarEmailSchema>;
 
 export const reenviarConfirmacaoEmailResponseSchema = z.object({ mensagem: z.string() });
 export type ReenviarConfirmacaoEmailResponse = z.infer<typeof reenviarConfirmacaoEmailResponseSchema>;
+
+/** Exclusão self-service de conta sem senha (Google) — confirmação por email em vez de senha atual. */
+export const confirmarExclusaoContaSchema = z.object({ token: z.string().min(32) });
+export type ConfirmarExclusaoContaInput = z.infer<typeof confirmarExclusaoContaSchema>;

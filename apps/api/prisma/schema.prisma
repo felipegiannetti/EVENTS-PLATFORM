@@ -118,6 +118,7 @@ model Usuario {
   programaIndicacao         ProgramaIndicacao?
   solicitacaoContaIndicacao SolicitacaoContaIndicacao?
   tokenConfirmacaoEmail     TokenConfirmacaoEmail?
+  tokenExclusaoConta        TokenExclusaoConta?
   indicacoesFeitas          Indicacao[]                @relation("IndicadorIndicacao")
   indicacaoRecebida         Indicacao?                 @relation("IndicadoIndicacao")
   eventosOrganizados        Evento[]                   @relation("EventoOrganizador")
@@ -496,6 +497,19 @@ model TokenConfirmacaoEmail {
   criadoEm  DateTime @default(now())
 
   @@map("tokens_confirmacao_email")
+}
+
+/// Conta sem senha (Google) não consegue confirmar exclusão com `senhaAtual` — usa token por email
+/// no lugar, mesmo padrão de TokenConfirmacaoEmail.
+model TokenExclusaoConta {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiraEm  DateTime
+  criadoEm  DateTime @default(now())
+
+  @@map("tokens_exclusao_conta")
 }
 
 model SolicitacaoContaIndicacao {

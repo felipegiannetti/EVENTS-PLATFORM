@@ -273,6 +273,54 @@ export class AuthService {
     if (!(await argon2.verify(usuario.senhaHash, senhaAtual))) {
       throw new SenhaAtualInvalidaException();
     }
+    await this.executarExclusaoConta(usuario);
+  }
+
+  /**
+   * Conta sem senha (Google) não tem como confirmar exclusão com `senhaAtual` — pede confirmação
+   * por email (mesmo padrão de token opaco de `enviarConfirmacaoEmail`). As checagens de bloqueio
+   * (owner de evento, vínculo de indicação, acordo comercial) já rodam aqui, antes de mandar o
+   * email — não faz sentido pedir confirmação pra uma exclusão que ia falhar de qualquer jeito.
+   */
+  async solicitarExclusaoConta(usuarioId: string): Promise<ReenviarConfirmacaoEmailResponse> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (usuario.senhaHash) {
+      throw new BadRequestException("Sua conta tem senha própria — use a exclusão normal (com senha).");
+    }
+    await this.validarPodeExcluirConta(usuarioId);
+
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = this.hashToken(token);
+    await this.prisma.tokenExclusaoConta.upsert({
+      where: { usuarioId },
+      create: { usuarioId, tokenHash, expiraEm: new Date(Date.now() + AuthService.PRAZO_CONFIRMACAO_EMAIL_HORAS * 60 * 60 * 1000) },
+      update: { tokenHash, expiraEm: new Date(Date.now() + AuthService.PRAZO_CONFIRMACAO_EMAIL_HORAS * 60 * 60 * 1000) },
+    });
+
+    const origemWeb = (this.config.get<string>("WEB_ORIGIN") ?? "http://localhost:3001").split(",")[0]!.replace(/\/$/, "");
+    const link = `${origemWeb}/excluir-conta?token=${encodeURIComponent(token)}`;
+    await this.mail.enviar({
+      para: [usuario.email],
+      assunto: "[RARO Tickets] Confirme a exclusão da sua conta",
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#16152a"><h1 style="font-size:22px">Confirme a exclusão da sua conta</h1><p>Olá, ${escaparHtml(usuario.nome)}. Recebemos um pedido pra excluir sua conta na RARO Tickets permanentemente.</p><p><a href="${link}" style="display:inline-block;background:#dc2626;color:white;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:bold">Excluir minha conta</a></p><p style="font-size:12px;color:#6b6880">O link expira em 24 horas. Se você não pediu isso, ignore este email — sua conta continua ativa.</p></div>`,
+    });
+    return { mensagem: "Enviamos um link de confirmação para o email da sua conta." };
+  }
+
+  async confirmarExclusaoConta(token: string): Promise<void> {
+    const registro = await this.prisma.tokenExclusaoConta.findFirst({
+      where: { tokenHash: this.hashToken(token), expiraEm: { gt: new Date() } },
+    });
+    if (!registro) {
+      throw new TokenConfirmacaoInvalidoException();
+    }
+    const usuario = await this.buscarPerfil(registro.usuarioId);
+    await this.validarPodeExcluirConta(usuario.id);
+    await this.executarExclusaoConta(usuario);
+  }
+
+  /** Bloqueios que impedem excluir a conta — compartilhado pelos dois fluxos (senha e token por email). */
+  private async validarPodeExcluirConta(usuarioId: string): Promise<void> {
     const papeis = await this.papelAcessoRepository.listarPorUsuario(usuarioId);
     if (papeis.some((papel) => papel.papel === "owner")) {
       throw new ContaComEventosException();
@@ -297,7 +345,10 @@ export class AuthService {
         "Sua conta possui acordos comerciais vinculados e não pode ser excluída diretamente. Fale com o suporte.",
       );
     }
+  }
 
+  private async executarExclusaoConta(usuario: UsuarioModel): Promise<void> {
+    const usuarioId = usuario.id;
     await this.refreshTokenRepository.revogarTodasDoUsuario(usuarioId);
     await this.prisma.$transaction(async (tx) => {
       // Ingresso não tem FK pra Usuario (compradorEmail é só texto) — sem isso, o nome/email/documento

@@ -30,6 +30,7 @@ import { AlterarSenhaDto } from "./dto/alterar-senha.dto";
 import { DeletarContaDto } from "./dto/deletar-conta.dto";
 import { ConfirmarEmailDto } from "./dto/confirmar-email.dto";
 import { CompletarDocumentoDto } from "./dto/completar-documento.dto";
+import { ConfirmarExclusaoContaDto } from "./dto/confirmar-exclusao-conta.dto";
 import { UsuarioMapper } from "./mapper/usuario.mapper";
 import type { UsuarioModel } from "./model/usuario.model";
 import type { AuthenticatedUser } from "../security/types/authenticated-request";
@@ -188,6 +189,25 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     await this.authService.deletarConta(usuario.id, dto.senhaAtual);
+    res.clearCookie(REFRESH_COOKIE);
+  }
+
+  /** Só pra conta sem senha (Google) — pede confirmação por email em vez de senha atual. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("me/exclusao")
+  async solicitarExclusaoConta(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.authService.solicitarExclusaoConta(usuario.id);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post("exclusao/confirmar")
+  async confirmarExclusaoConta(
+    @Body() dto: ConfirmarExclusaoContaDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.authService.confirmarExclusaoConta(dto.token);
     res.clearCookie(REFRESH_COOKIE);
   }
 

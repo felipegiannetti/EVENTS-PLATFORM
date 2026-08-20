@@ -8,7 +8,6 @@ Checklist único juntando tudo que está registrado como pendente espalhado pelo
 
 ## Conta / autenticação
 
-- [ ] **Exclusão self-service de conta criada via Google** — `DELETE /auth/me` exige senha; conta Google não tem. Hoje só mostra uma nota "fale com o suporte", sem alternativa real (nem existe canal de suporte ainda, ver item abaixo).
 - [ ] **Código de indicação (`?ref=`) no cadastro via Google** — o botão "Criar conta com Google" em `/registro?ref=CODIGO` não carrega esse código pro backend; só o formulário normal atribui a indicação.
 - [ ] **Credenciais reais do Google OAuth** — `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` vêm vazios em `.env`; sem preencher, o botão "Continuar com Google" redireciona mas o Google rejeita o `client_id`. Criar em https://console.cloud.google.com/apis/credentials.
 - [ ] **Confirmação real de CPF/CNPJ** (não só dígito verificador) — exigiria serviço externo pago (SERPRO/Serasa) ou a checagem que o próprio gateway de pagamento faria no onboarding. **Adiado a pedido do usuário.**

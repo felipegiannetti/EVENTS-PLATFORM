@@ -82,6 +82,19 @@ export function deletarConta(input: DeletarContaInput, token: string) {
   );
 }
 
+/** Só pra conta sem senha (Google) — pede confirmação por email em vez de senha atual. */
+export function solicitarExclusaoConta(token: string) {
+  return apiFetch<ReenviarConfirmacaoEmailResponse>(
+    "/auth/me/exclusao",
+    { method: "POST", body: JSON.stringify({}) },
+    token,
+  );
+}
+
+export function confirmarExclusaoConta(token: string) {
+  return apiFetch<void>("/auth/exclusao/confirmar", { method: "POST", body: JSON.stringify({ token }) });
+}
+
 export function confirmarEmail(token: string) {
   return apiFetch<void>("/auth/confirmar-email", { method: "POST", body: JSON.stringify({ token }) });
 }

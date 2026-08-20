@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
-import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, completarDocumento, deletarConta, reenviarConfirmacaoEmail } from "@/lib/auth-client";
+import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, completarDocumento, deletarConta, reenviarConfirmacaoEmail, solicitarExclusaoConta } from "@/lib/auth-client";
 import { formatarCpfOuCnpj, formatarDocumento, formatarTelefone } from "@/lib/formatters";
 import { listarEventos } from "@/lib/events-client";
 import { listarMeusIngressos } from "@/lib/tickets-client";
@@ -309,6 +309,8 @@ function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: str
   const [senhaExclusao, setSenhaExclusao] = useState("");
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [solicitandoExclusaoGoogle, setSolicitandoExclusaoGoogle] = useState(false);
+  const [mensagemExclusaoGoogle, setMensagemExclusaoGoogle] = useState<string | null>(null);
 
   async function onAlterarEmail(e: FormEvent) {
     e.preventDefault();
@@ -364,6 +366,19 @@ function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: str
       setErroExclusao(err instanceof ApiError ? err.message : "Não foi possível excluir a conta.");
     } finally {
       setExcluindo(false);
+    }
+  }
+
+  async function onSolicitarExclusaoGoogle() {
+    setSolicitandoExclusaoGoogle(true);
+    setMensagemExclusaoGoogle(null);
+    try {
+      const resposta = await solicitarExclusaoConta(token);
+      setMensagemExclusaoGoogle(resposta.mensagem);
+    } catch (err) {
+      setMensagemExclusaoGoogle(err instanceof ApiError ? err.message : "Não foi possível solicitar a exclusão.");
+    } finally {
+      setSolicitandoExclusaoGoogle(false);
     }
   }
 
@@ -443,7 +458,13 @@ function SecaoSeguranca({ perfil, token }: { perfil: UsuarioResponse; token: str
         </p>
 
         {perfil.usaGoogle ? (
-          <p className="mt-4 text-sm text-muted">Contas criadas com login do Google ainda não têm exclusão self-service (exige senha, que essa conta não tem) — fale com o suporte.</p>
+          <div className="mt-4 flex flex-col gap-3">
+            <p className="text-sm text-muted">Sua conta usa login com o Google — sem senha pra confirmar, enviamos um link de confirmação pro seu email.</p>
+            <Button variant="secondary" onClick={onSolicitarExclusaoGoogle} loading={solicitandoExclusaoGoogle} className="w-fit gap-2 text-danger">
+              <Trash2 size={16} /> Solicitar exclusão por email
+            </Button>
+            {mensagemExclusaoGoogle && <p className="text-sm text-muted">{mensagemExclusaoGoogle}</p>}
+          </div>
         ) : !mostrarExclusao ? (
           <Button variant="secondary" onClick={() => setMostrarExclusao(true)} className="mt-4 gap-2 text-danger">
             <Trash2 size={16} /> Excluir minha conta

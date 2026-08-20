@@ -15,6 +15,7 @@ export class UsuarioMapper {
       dataNascimento: model.dataNascimento ? model.dataNascimento.toISOString().slice(0, 10) : null,
       telefone: model.telefone,
       usaGoogle: model.googleId !== null,
+      emailConfirmado: model.emailConfirmado,
       criadoEm: model.criadoEm.toISOString(),
     };
   }

@@ -8,7 +8,6 @@ Checklist único juntando tudo que está registrado como pendente espalhado pelo
 
 ## Conta / autenticação
 
-- [ ] **Email de confirmação de criação de conta** — `POST /auth/register` loga direto, sem nenhum email de boas-vindas/confirmação. Falta decidir se vira um gate ("conta não confirmada" até clicar num link) ou só um email informativo. Ver [11-roadmap.md](11-roadmap.md#backlog-imediato-itens-identificados-ainda-não-implementados).
 - [ ] **Completar cadastro de conta criada via Google** — hoje uma conta criada com "Continuar com Google" fica permanentemente com `documento`/`telefone` nulos até o usuário editar manualmente em `/perfil` (documento nem dá pra editar lá — é imutável por design). Não existe nenhum lembrete, gate ou fluxo guiado pra completar isso, mesmo que seja necessário depois (ex: pra criar evento pago, cadastrar conta bancária). Ver [11-roadmap.md](11-roadmap.md#login-com-google-oauth2--implementado-precisa-de-credenciais-reais).
 - [ ] **Exclusão self-service de conta criada via Google** — `DELETE /auth/me` exige senha; conta Google não tem. Hoje só mostra uma nota "fale com o suporte", sem alternativa real (nem existe canal de suporte ainda, ver item abaixo).
 - [ ] **Código de indicação (`?ref=`) no cadastro via Google** — o botão "Criar conta com Google" em `/registro?ref=CODIGO` não carrega esse código pro backend; só o formulário normal atribui a indicação.

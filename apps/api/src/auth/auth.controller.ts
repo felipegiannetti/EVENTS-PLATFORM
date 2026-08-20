@@ -28,6 +28,7 @@ import { AtualizarPerfilDto } from "./dto/atualizar-perfil.dto";
 import { AlterarEmailDto } from "./dto/alterar-email.dto";
 import { AlterarSenhaDto } from "./dto/alterar-senha.dto";
 import { DeletarContaDto } from "./dto/deletar-conta.dto";
+import { ConfirmarEmailDto } from "./dto/confirmar-email.dto";
 import { UsuarioMapper } from "./mapper/usuario.mapper";
 import type { UsuarioModel } from "./model/usuario.model";
 import type { AuthenticatedUser } from "../security/types/authenticated-request";
@@ -112,6 +113,20 @@ export class AuthController {
     const sessao = await this.authService.refresh(refreshTokenPlano, this.contexto(req));
     this.setRefreshCookie(res, sessao.refreshToken);
     return sessao;
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post("confirmar-email")
+  async confirmarEmail(@Body() dto: ConfirmarEmailDto): Promise<void> {
+    await this.authService.confirmarEmail(dto.token);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("reenviar-confirmacao")
+  async reenviarConfirmacao(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.authService.reenviarConfirmacaoEmail(usuario.id);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)

@@ -14,6 +14,7 @@ export const usuarioResponseSchema = z.object({
   telefone: z.string().nullable(),
   /** true = conta usa "Continuar com Google" (sem senha própria — telas de trocar/apagar senha não se aplicam). */
   usaGoogle: z.boolean(),
+  emailConfirmado: z.boolean(),
   criadoEm: z.string().datetime(),
 });
 export type UsuarioResponse = z.infer<typeof usuarioResponseSchema>;

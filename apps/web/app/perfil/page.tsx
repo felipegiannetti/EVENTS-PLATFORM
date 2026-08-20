@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
-import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, deletarConta } from "@/lib/auth-client";
+import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, deletarConta, reenviarConfirmacaoEmail } from "@/lib/auth-client";
 import { formatarDocumento, formatarTelefone } from "@/lib/formatters";
 import { listarEventos } from "@/lib/events-client";
 import { listarMeusIngressos } from "@/lib/tickets-client";
@@ -27,12 +27,27 @@ function Perfil({ token }: { token: string }) {
   const [secao, setSecao] = useState<Secao>("dados");
   const [perfil, setPerfil] = useState<UsuarioResponse | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [reenviando, setReenviando] = useState(false);
+  const [mensagemReenvio, setMensagemReenvio] = useState<string | null>(null);
 
   useEffect(() => {
     buscarPerfil(token)
       .then(setPerfil)
       .catch((err) => setErro(err instanceof ApiError ? err.message : "Não foi possível carregar o perfil."));
   }, [token]);
+
+  async function onReenviarConfirmacao() {
+    setReenviando(true);
+    setMensagemReenvio(null);
+    try {
+      const resposta = await reenviarConfirmacaoEmail(token);
+      setMensagemReenvio(resposta.mensagem);
+    } catch (err) {
+      setMensagemReenvio(err instanceof ApiError ? err.message : "Não foi possível reenviar a confirmação.");
+    } finally {
+      setReenviando(false);
+    }
+  }
 
   if (!perfil) {
     return <p className="p-6 text-sm text-muted">{erro ?? "Carregando..."}</p>;
@@ -52,6 +67,19 @@ function Perfil({ token }: { token: string }) {
       </span>
       <h1 className="page-title">Sua conta</h1>
       <p className="page-description">Gerencie seus dados, segurança e histórico de eventos.</p>
+
+      {!perfil.emailConfirmado && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <span className="flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            Confirme seu email pra liberar ações como criar evento e cadastrar conta de repasse. Verifique sua caixa de entrada.
+          </span>
+          <Button variant="secondary" onClick={onReenviarConfirmacao} loading={reenviando} className="!h-9 !px-3 !text-xs">
+            Reenviar confirmação
+          </Button>
+        </div>
+      )}
+      {mensagemReenvio && <p className="mt-2 text-sm text-muted">{mensagemReenvio}</p>}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">

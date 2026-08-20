@@ -1,9 +1,14 @@
 import { randomBytes, randomUUID, createHash } from "node:crypto";
-import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
-import type { AtualizarPerfilInput, AuthResponse, RegisterInput } from "@events-platform/shared-types";
+import type {
+  AtualizarPerfilInput,
+  AuthResponse,
+  ReenviarConfirmacaoEmailResponse,
+  RegisterInput,
+} from "@events-platform/shared-types";
 import { USUARIO_REPOSITORY, type UsuarioRepository } from "./repository/usuario.repository";
 import {
   REFRESH_TOKEN_REPOSITORY,
@@ -22,7 +27,11 @@ import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.e
 import { ContaComEventosException } from "./exceptions/conta-com-eventos.exception";
 import { ContaSemSenhaException } from "./exceptions/conta-sem-senha.exception";
 import { ContaBloqueadaException } from "./exceptions/conta-bloqueada.exception";
+import { TokenConfirmacaoInvalidoException } from "./exceptions/token-confirmacao-invalido.exception";
 import { PrismaService } from "../infra/prisma/prisma.service";
+import { MailService } from "../infra/mail/mail.service";
+import { escaparHtml } from "../infra/mail/escapar-html.util";
+import { criptografar, hashDeterministico } from "../infra/crypto/campo-criptografado.util";
 
 export interface SessaoContexto {
   ip?: string;
@@ -33,7 +42,9 @@ export interface SessaoContexto {
 export class AuthService {
   private static readonly MAX_TENTATIVAS_LOGIN = 5;
   private static readonly BLOQUEIO_MINUTOS = 15;
+  private static readonly PRAZO_CONFIRMACAO_EMAIL_HORAS = 24;
 
+  private readonly logger = new Logger(AuthService.name);
   private readonly refreshTtlDays: number;
 
   constructor(
@@ -45,6 +56,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly mail: MailService,
   ) {
     this.refreshTtlDays = Number(this.config.get("JWT_REFRESH_TTL_DAYS") ?? 90);
   }
@@ -75,6 +87,7 @@ export class AuthService {
     }
 
     const senhaHash = await argon2.hash(dados.senha, { type: argon2.argon2id });
+    const chaveDocumento = this.config.getOrThrow<string>("DOCUMENTO_ENCRYPTION_KEY");
     const usuarioId = await this.prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.create({
         data: {
@@ -82,9 +95,14 @@ export class AuthService {
           email: dados.email,
           senhaHash,
           tipoPessoa: dados.tipoPessoa,
-          documento: dados.documento,
+          // Criptografado (AES-256-GCM) + documentoHash como índice determinístico — mesmo padrão de
+          // PrismaUsuarioRepository.criar(), que este fluxo não usa (precisa da transação com Indicacao).
+          documento: criptografar(dados.documento, chaveDocumento),
+          documentoHash: hashDeterministico(dados.documento, chaveDocumento),
           dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
           telefone: dados.telefone,
+          // Único fluxo que exige confirmação — Google já verifica o email (default do schema fica true).
+          emailConfirmado: false,
         },
         select: { id: true },
       });
@@ -102,7 +120,65 @@ export class AuthService {
     });
     const usuario = await this.usuarioRepository.buscarPorId(usuarioId);
     if (!usuario) throw new Error("Usuário criado não foi encontrado.");
+    try {
+      await this.enviarConfirmacaoEmail(usuario);
+    } catch (erro) {
+      // Melhor esforço — mesmo padrão do email de confirmação de ingresso: a conta já foi criada,
+      // não desfazemos o cadastro só porque o SMTP falhou. O usuário sempre pode reenviar depois.
+      this.logger.warn(`Não foi possível enviar o email de confirmação da conta ${usuario.id}: ${(erro as Error).message}`);
+    }
     return usuario;
+  }
+
+  /**
+   * Reenvio explícito (botão "reenviar" ou tela de aviso) — pedido por quem já está logado mas
+   * ainda não confirmou. Idempotente: se já confirmado, só avisa, não trata como erro.
+   */
+  async reenviarConfirmacaoEmail(usuarioId: string): Promise<ReenviarConfirmacaoEmailResponse> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (usuario.emailConfirmado) {
+      return { mensagem: "Seu email já está confirmado." };
+    }
+    await this.enviarConfirmacaoEmail(usuario);
+    return { mensagem: "Enviamos um novo link de confirmação para o seu email." };
+  }
+
+  async confirmarEmail(token: string): Promise<void> {
+    const registro = await this.prisma.tokenConfirmacaoEmail.findFirst({
+      where: { tokenHash: this.hashToken(token), expiraEm: { gt: new Date() } },
+    });
+    if (!registro) {
+      throw new TokenConfirmacaoInvalidoException();
+    }
+    await this.prisma.$transaction([
+      this.prisma.usuario.update({ where: { id: registro.usuarioId }, data: { emailConfirmado: true } }),
+      this.prisma.tokenConfirmacaoEmail.delete({ where: { id: registro.id } }),
+    ]);
+  }
+
+  private async enviarConfirmacaoEmail(usuario: UsuarioModel): Promise<void> {
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = this.hashToken(token);
+    await this.prisma.tokenConfirmacaoEmail.upsert({
+      where: { usuarioId: usuario.id },
+      create: {
+        usuarioId: usuario.id,
+        tokenHash,
+        expiraEm: new Date(Date.now() + AuthService.PRAZO_CONFIRMACAO_EMAIL_HORAS * 60 * 60 * 1000),
+      },
+      update: {
+        tokenHash,
+        expiraEm: new Date(Date.now() + AuthService.PRAZO_CONFIRMACAO_EMAIL_HORAS * 60 * 60 * 1000),
+      },
+    });
+
+    const origemWeb = (this.config.get<string>("WEB_ORIGIN") ?? "http://localhost:3001").split(",")[0]!.replace(/\/$/, "");
+    const link = `${origemWeb}/confirmar-email?token=${encodeURIComponent(token)}`;
+    await this.mail.enviar({
+      para: [usuario.email],
+      assunto: "[RARO Tickets] Confirme seu email",
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#16152a"><h1 style="font-size:22px">Confirme seu email</h1><p>Olá, ${escaparHtml(usuario.nome)}. Falta só um passo pra usar sua conta na RARO Tickets — confirme seu email clicando no botão abaixo.</p><p><a href="${link}" style="display:inline-block;background:#6d28d9;color:white;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:bold">Confirmar email</a></p><p style="font-size:12px;color:#6b6880">O link expira em 24 horas. Se você não criou essa conta, ignore este email.</p></div>`,
+    });
   }
 
   async buscarPerfil(usuarioId: string): Promise<UsuarioModel> {

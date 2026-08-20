@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Put, UseGuards } from "@nestjs/common";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
+import { EmailConfirmadoGuard } from "../security/guards/email-confirmado.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
 import { FinanceService } from "./finance.service";
 import { ContaBancariaMapper } from "./mapper/conta-bancaria.mapper";
@@ -28,6 +29,7 @@ export class FinanceController {
   }
 
   @EventRoles("owner")
+  @UseGuards(EmailConfirmadoGuard)
   @Put("conta-bancaria")
   async cadastrarContaBancaria(
     @Param("id") eventoId: string,

@@ -79,6 +79,10 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
     });
   }
 
+  async confirmarEmail(id: string): Promise<void> {
+    await this.prisma.usuario.update({ where: { id }, data: { emailConfirmado: true } });
+  }
+
   private chave(): string {
     return this.config.getOrThrow<string>("DOCUMENTO_ENCRYPTION_KEY");
   }
@@ -98,6 +102,7 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
       usuario.criadoEm,
       usuario.tentativasFalhas,
       usuario.bloqueadoAte,
+      usuario.emailConfirmado,
     );
   }
 }

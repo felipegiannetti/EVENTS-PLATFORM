@@ -10,9 +10,10 @@ import { PrismaUsuarioRepository } from "./repository/prisma-usuario.repository"
 import { REFRESH_TOKEN_REPOSITORY } from "./repository/refresh-token.repository";
 import { PrismaRefreshTokenRepository } from "./repository/prisma-refresh-token.repository";
 import { EventsModule } from "../events/events.module";
+import { MailModule } from "../infra/mail/mail.module";
 
 @Module({
-  imports: [JwtModule.register({}), forwardRef(() => EventsModule)],
+  imports: [JwtModule.register({}), forwardRef(() => EventsModule), MailModule],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -14,6 +14,8 @@ export interface CriarUsuarioData {
   dataNascimento?: Date;
   telefone?: string;
   googleId?: string;
+  /** Ausente = usa o default do schema (true). Cadastro normal passa `false` explicitamente — só esse fluxo exige confirmação; Google já verifica o email. */
+  emailConfirmado?: boolean;
 }
 
 /**
@@ -45,4 +47,6 @@ export interface UsuarioRepository {
   bloquearAte(id: string, ate: Date): Promise<void>;
   /** Zera contador e bloqueio — chamado em login bem-sucedido. */
   resetarTentativasFalhas(id: string): Promise<void>;
+  /** Marca o email como confirmado — chamado só pelo fluxo de confirmação (token), nunca por `atualizar`. */
+  confirmarEmail(id: string): Promise<void>;
 }

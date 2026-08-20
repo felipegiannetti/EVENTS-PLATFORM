@@ -17,5 +17,6 @@ export class UsuarioModel {
     public readonly criadoEm: Date,
     public readonly tentativasFalhas: number = 0,
     public readonly bloqueadoAte: Date | null = null,
+    public readonly emailConfirmado: boolean = true,
   ) {}
 }

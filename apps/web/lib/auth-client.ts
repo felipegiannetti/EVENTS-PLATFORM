@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   DeletarContaInput,
   LoginInput,
+  ReenviarConfirmacaoEmailResponse,
   RegisterInput,
   UsuarioResponse,
 } from "@events-platform/shared-types";
@@ -68,6 +69,18 @@ export function deletarConta(input: DeletarContaInput, token: string) {
   return apiFetch<void>(
     "/auth/me",
     { method: "DELETE", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export function confirmarEmail(token: string) {
+  return apiFetch<void>("/auth/confirmar-email", { method: "POST", body: JSON.stringify({ token }) });
+}
+
+export function reenviarConfirmacaoEmail(token: string) {
+  return apiFetch<ReenviarConfirmacaoEmailResponse>(
+    "/auth/reenviar-confirmacao",
+    { method: "POST", body: JSON.stringify({}) },
     token,
   );
 }

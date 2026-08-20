@@ -20,6 +20,7 @@ import { ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { TAMANHO_MAXIMO_BANNER_BYTES } from "@events-platform/shared-types";
 import { EventRoleGuard } from "../security/guards/event-role.guard";
+import { EmailConfirmadoGuard } from "../security/guards/email-confirmado.guard";
 import { EventRoles } from "../security/decorators/roles.decorator";
 import { CurrentUser } from "../security/decorators/current-user.decorator";
 import { Public } from "../security/decorators/public.decorator";
@@ -54,6 +55,7 @@ export class EventsController {
     private readonly cupomDescontoMapper: CupomDescontoMapper,
   ) {}
 
+  @UseGuards(EmailConfirmadoGuard)
   @Post()
   async criar(@Body() dto: CriarEventoDto, @CurrentUser() usuario: AuthenticatedUser) {
     const evento = await this.eventsService.criarEvento(usuario.id, dto);

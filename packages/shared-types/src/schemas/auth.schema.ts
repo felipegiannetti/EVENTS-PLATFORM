@@ -54,3 +54,9 @@ export const authResponseSchema = z.object({
   expiraEm: z.string().datetime(),
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+export const confirmarEmailSchema = z.object({ token: z.string().min(32) });
+export type ConfirmarEmailInput = z.infer<typeof confirmarEmailSchema>;
+
+export const reenviarConfirmacaoEmailResponseSchema = z.object({ mensagem: z.string() });
+export type ReenviarConfirmacaoEmailResponse = z.infer<typeof reenviarConfirmacaoEmailResponseSchema>;

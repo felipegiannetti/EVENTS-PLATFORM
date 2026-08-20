@@ -30,7 +30,9 @@ Segue o padrão descrito em [docs/architecture/03-modulos-backend.md](../archite
 
 | Rota | Descrição |
 |---|---|
-| `POST /auth/register` | Cria usuário (senha com argon2id) e já retorna sessão logada (auto-login). Pede `tipoPessoa` (`fisica`/`juridica`), `documento`, `dataNascimento` quando PF e **`telefone`** (obrigatório). Aceita `codigoIndicacao` opcional: valida uma oferta ativa e cria na mesma transação o vínculo permanente com indicador e snapshot do benefício negociado |
+| `POST /auth/register` | Cria usuário (senha com argon2id) e já retorna sessão logada (auto-login). Pede `tipoPessoa` (`fisica`/`juridica`), `documento`, `dataNascimento` quando PF e **`telefone`** (obrigatório). Aceita `codigoIndicacao` opcional: valida uma oferta ativa e cria na mesma transação o vínculo permanente com indicador e snapshot do benefício negociado. Nasce com `emailConfirmado: false` e dispara (melhor esforço) o email de confirmação |
+| `POST /auth/confirmar-email` | Público — confirma o token recebido por email (`TokenConfirmacaoEmail`, expira em 24h), marca `Usuario.emailConfirmado: true`. Base da página `/confirmar-email` |
+| `POST /auth/reenviar-confirmacao` | Autenticado — reenvia o email de confirmação (gera token novo); idempotente, não é erro se já confirmado |
 | `POST /auth/login` | Valida email/senha (rate limit: 5/min), retorna access + refresh token |
 | `POST /auth/refresh` | Rotaciona o refresh token (janela deslizante de 90 dias); reuso de token já revogado derruba toda a sessão |
 | `POST /auth/logout` | Revoga o refresh token atual |
@@ -51,6 +53,8 @@ Estratégia de sessão completa em [docs/architecture/07-app-checkin.md](../arch
 **Sessão persistente**: access token JWT de 15 minutos + refresh token opaco (hash SHA-256 no banco) com validade de 90 dias, renovada a cada uso (sliding window) — o usuário só é deslogado automaticamente depois de 90 dias sem abrir o app/site. Web recebe o refresh token em cookie `httpOnly`/`secure`/`sameSite=strict`; mobile recebe no corpo da resposta.
 
 **RBAC**: `Usuario.papelGlobal` (`usuario` | `admin_geral`) checado pelo `RolesGuard`; papel por evento (`owner` | `gestor` | `view` | `checkin_operator`, tabela `PapelAcesso`) checado pelo `EventRoleGuard` — ambos em `apps/api/src/security/guards/`.
+
+**Gate de email confirmado**: `EmailConfirmadoGuard` (mesma pasta) bloqueia `POST /events` (criar evento) e `PUT /events/:id/conta-bancaria` com `409 EMAIL_NAO_CONFIRMADO` enquanto `Usuario.emailConfirmado` for `false` — lê direto do banco (não do JWT), então confirmar o email libera na hora, sem precisar de novo login.
 
 ### Events (`apps/api/src/events/`)
 
@@ -171,6 +175,7 @@ Construído em paralelo ao backend — a regra do time é sempre ter a tela de c
 |---|---|
 | `/login`, `/registro` | Autenticação — usam `lib/auth-context.tsx`, que guarda o access token só em memória e faz refresh silencioso. `/registro` aceita `?ref=CODIGO`, exibe a negociação do convite e envia o código na criação atômica da conta; pede `telefone` (obrigatório, com máscara). Ambas as telas têm um botão "Continuar com Google" (`components/google-login-button.tsx`, navegação de página inteira pra `GET /auth/google`, não um fetch) |
 | `/entrar-google` | Destino do redirect de `GET /auth/google/callback` — lê `accessToken` da query string e chama `AuthContext.definirSessaoExterna` (o refresh token já veio via cookie no redirect do backend), depois manda pra `/` |
+| `/confirmar-email` | Destino do link de `POST /auth/confirmar-email` — lê `?token=`, confirma automaticamente ao montar (sem clique extra) e mostra sucesso/erro. `/perfil` mostra um banner com botão "Reenviar" enquanto `emailConfirmado` for `false` |
 | `/status` | Health check da API (esqueleto original da fatia 1) |
 | `/eventos/todos` | Catálogo público com busca por nome/localização, filtros de categoria, cidade/estado/país (via `LocationFilterModal`, estilo Sympla) e data exata, além de ordenação |
 | `/eventos` | Lista os eventos do usuário logado |

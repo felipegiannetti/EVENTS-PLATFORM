@@ -103,6 +103,10 @@ model Usuario {
   tentativasFalhas Int        @default(0)
   /// Se no futuro (bloqueadoAte > agora), login recusado mesmo com senha certa — ver AuthService.validarCredenciais.
   bloqueadoAte    DateTime?
+  /// Default true de propósito: grandfathering de contas existentes na migração + contas via Google
+  /// (o Google já verifica o email, não precisa confirmar de novo). AuthService.registrar() sobrescreve
+  /// pra false explicitamente só no cadastro normal — é o único fluxo que exige confirmação.
+  emailConfirmado Boolean     @default(true)
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
@@ -113,6 +117,7 @@ model Usuario {
   acordosDefinidos          AcordoComercial[]          @relation("AcordoComercialAdmin")
   programaIndicacao         ProgramaIndicacao?
   solicitacaoContaIndicacao SolicitacaoContaIndicacao?
+  tokenConfirmacaoEmail     TokenConfirmacaoEmail?
   indicacoesFeitas          Indicacao[]                @relation("IndicadorIndicacao")
   indicacaoRecebida         Indicacao?                 @relation("IndicadoIndicacao")
   eventosOrganizados        Evento[]                   @relation("EventoOrganizador")
@@ -478,6 +483,19 @@ model ProgramaIndicacao {
   ofertas OfertaIndicacao[]
 
   @@map("programas_indicacao")
+}
+
+/// Token de confirmação de email no cadastro (gate obrigatório) — mesmo padrão de token opaco
+/// (hash guardado, nunca o valor puro) de SolicitacaoContaIndicacao/RefreshToken.
+model TokenConfirmacaoEmail {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiraEm  DateTime
+  criadoEm  DateTime @default(now())
+
+  @@map("tokens_confirmacao_email")
 }
 
 model SolicitacaoContaIndicacao {

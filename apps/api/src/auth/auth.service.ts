@@ -3,11 +3,14 @@ import { BadRequestException, ConflictException, Inject, Injectable, Logger } fr
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
-import type {
-  AtualizarPerfilInput,
-  AuthResponse,
-  ReenviarConfirmacaoEmailResponse,
-  RegisterInput,
+import {
+  apenasDigitos,
+  type AtualizarPerfilInput,
+  type AuthResponse,
+  type CompletarDocumentoInput,
+  type ReenviarConfirmacaoEmailResponse,
+  type RegisterInput,
+  type TipoPessoa,
 } from "@events-platform/shared-types";
 import { USUARIO_REPOSITORY, type UsuarioRepository } from "./repository/usuario.repository";
 import {
@@ -21,6 +24,7 @@ import {
 import { UsuarioModel } from "./model/usuario.model";
 import { EmailJaCadastradoException } from "./exceptions/email-ja-cadastrado.exception";
 import { DocumentoJaCadastradoException } from "./exceptions/documento-ja-cadastrado.exception";
+import { DocumentoJaDefinidoException } from "./exceptions/documento-ja-definido.exception";
 import { RefreshTokenInvalidoException } from "./exceptions/refresh-token-invalido.exception";
 import { UsuarioNaoEncontradoException } from "./exceptions/usuario-nao-encontrado.exception";
 import { SenhaAtualInvalidaException } from "./exceptions/senha-atual-invalida.exception";
@@ -88,6 +92,9 @@ export class AuthService {
 
     const senhaHash = await argon2.hash(dados.senha, { type: argon2.argon2id });
     const chaveDocumento = this.config.getOrThrow<string>("DOCUMENTO_ENCRYPTION_KEY");
+    // Normalizado pra só dígitos — "123.456.789-00" e "12345678900" não podem virar registros
+    // diferentes pro mesmo documento (quebraria a checagem de duplicidade).
+    const documentoNormalizado = apenasDigitos(dados.documento);
     const usuarioId = await this.prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.create({
         data: {
@@ -97,8 +104,8 @@ export class AuthService {
           tipoPessoa: dados.tipoPessoa,
           // Criptografado (AES-256-GCM) + documentoHash como índice determinístico — mesmo padrão de
           // PrismaUsuarioRepository.criar(), que este fluxo não usa (precisa da transação com Indicacao).
-          documento: criptografar(dados.documento, chaveDocumento),
-          documentoHash: hashDeterministico(dados.documento, chaveDocumento),
+          documento: criptografar(documentoNormalizado, chaveDocumento),
+          documentoHash: hashDeterministico(documentoNormalizado, chaveDocumento),
           dataNascimento: dados.dataNascimento ? new Date(dados.dataNascimento) : undefined,
           telefone: dados.telefone,
           // Único fluxo que exige confirmação — Google já verifica o email (default do schema fica true).
@@ -195,6 +202,35 @@ export class AuthService {
       dataNascimento: input.dataNascimento ? new Date(input.dataNascimento) : undefined,
       telefone: input.telefone,
     });
+  }
+
+  /**
+   * Só pra quem ainda não tem `documento` (conta criada via Google, que não pede CPF/CNPJ no OAuth).
+   * Depois de definido, vira imutável igual ao cadastro normal — sem endpoint de edição. `tipoPessoa`
+   * é inferido pela quantidade de dígitos do documento (mesma lógica de `validarCpfOuCnpj`).
+   */
+  async completarDocumento(usuarioId: string, input: CompletarDocumentoInput): Promise<UsuarioModel> {
+    const usuario = await this.buscarPerfil(usuarioId);
+    if (usuario.documento) {
+      throw new DocumentoJaDefinidoException();
+    }
+    const existente = await this.usuarioRepository.buscarPorDocumento(input.documento);
+    if (existente) {
+      throw new DocumentoJaCadastradoException();
+    }
+    const chave = this.config.getOrThrow<string>("DOCUMENTO_ENCRYPTION_KEY");
+    const documentoNormalizado = apenasDigitos(input.documento);
+    const tipoPessoa: TipoPessoa = documentoNormalizado.length === 14 ? "juridica" : "fisica";
+    await this.prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        documento: criptografar(documentoNormalizado, chave),
+        documentoHash: hashDeterministico(documentoNormalizado, chave),
+        tipoPessoa,
+        dataNascimento: input.dataNascimento ? new Date(input.dataNascimento) : undefined,
+      },
+    });
+    return this.buscarPerfil(usuarioId);
   }
 
   async alterarEmail(usuarioId: string, novoEmail: string, senhaAtual: string): Promise<UsuarioModel> {

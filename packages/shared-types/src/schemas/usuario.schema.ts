@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PAPEL_GLOBAL, TIPO_PESSOA } from "../enums";
 import { MENSAGEM_SENHA_FRACA, senhaEhForte } from "../validators/senha";
+import { validarCnpj, validarCpf } from "../validators/documento";
 
 export const usuarioResponseSchema = z.object({
   id: z.string().uuid(),
@@ -39,6 +40,35 @@ export const alterarSenhaSchema = z.object({
   novaSenha: z.string().min(8).max(72).refine(senhaEhForte, { message: MENSAGEM_SENHA_FRACA }),
 });
 export type AlterarSenhaInput = z.infer<typeof alterarSenhaSchema>;
+
+/**
+ * Só pra quem ainda não tem `documento` (conta criada via Google) — uma vez definido, vira
+ * imutável igual ao cadastro normal (backend rejeita se já existir). `tipoPessoa` não é pedido:
+ * é inferido pela quantidade de dígitos (11 = CPF/pessoa física, 14 = CNPJ/pessoa jurídica).
+ */
+export const completarDocumentoSchema = z
+  .object({
+    documento: z.string().min(11).max(18),
+    dataNascimento: z.string().date().optional(),
+  })
+  .superRefine((dados, ctx) => {
+    const digitos = dados.documento.replace(/\D/g, "");
+    if (digitos.length === 11) {
+      if (!validarCpf(dados.documento)) {
+        ctx.addIssue({ code: "custom", path: ["documento"], message: "CPF inválido (dígito verificador não confere)" });
+      }
+      if (!dados.dataNascimento) {
+        ctx.addIssue({ code: "custom", path: ["dataNascimento"], message: "Data de nascimento é obrigatória para pessoa física" });
+      }
+    } else if (digitos.length === 14) {
+      if (!validarCnpj(dados.documento)) {
+        ctx.addIssue({ code: "custom", path: ["documento"], message: "CNPJ inválido (dígito verificador não confere)" });
+      }
+    } else {
+      ctx.addIssue({ code: "custom", path: ["documento"], message: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos)" });
+    }
+  });
+export type CompletarDocumentoInput = z.infer<typeof completarDocumentoSchema>;
 
 /** Bloqueado no backend se o usuário ainda for owner de algum evento — não dá pra apagar a conta e deixar o evento órfão. */
 export const deletarContaSchema = z.object({

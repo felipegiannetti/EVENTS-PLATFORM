@@ -4,7 +4,8 @@
  * Usado em conta-bancaria.schema.ts (titular pode ser PF ou PJ).
  */
 
-function apenasDigitos(valor: string): string {
+/** Normaliza CPF/CNPJ pra só dígitos — forma canônica usada antes de criptografar/hashear no backend, pra "123.456.789-00" e "12345678900" não virarem registros diferentes. */
+export function apenasDigitos(valor: string): string {
   return valor.replace(/\D/g, "");
 }
 

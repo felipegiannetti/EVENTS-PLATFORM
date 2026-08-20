@@ -3,6 +3,7 @@ import type {
   AlterarSenhaInput,
   AtualizarPerfilInput,
   AuthResponse,
+  CompletarDocumentoInput,
   DeletarContaInput,
   LoginInput,
   ReenviarConfirmacaoEmailResponse,
@@ -44,6 +45,14 @@ export function buscarPerfil(token: string) {
 export function atualizarPerfil(input: AtualizarPerfilInput, token: string) {
   return apiFetch<UsuarioResponse>(
     "/auth/me",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export function completarDocumento(input: CompletarDocumentoInput, token: string) {
+  return apiFetch<UsuarioResponse>(
+    "/auth/me/documento",
     { method: "PATCH", body: JSON.stringify(input) },
     token,
   );

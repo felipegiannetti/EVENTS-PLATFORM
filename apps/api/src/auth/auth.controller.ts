@@ -29,6 +29,7 @@ import { AlterarEmailDto } from "./dto/alterar-email.dto";
 import { AlterarSenhaDto } from "./dto/alterar-senha.dto";
 import { DeletarContaDto } from "./dto/deletar-conta.dto";
 import { ConfirmarEmailDto } from "./dto/confirmar-email.dto";
+import { CompletarDocumentoDto } from "./dto/completar-documento.dto";
 import { UsuarioMapper } from "./mapper/usuario.mapper";
 import type { UsuarioModel } from "./model/usuario.model";
 import type { AuthenticatedUser } from "../security/types/authenticated-request";
@@ -153,6 +154,14 @@ export class AuthController {
   @Patch("me")
   async atualizarPerfil(@CurrentUser() usuario: AuthenticatedUser, @Body() dto: AtualizarPerfilDto) {
     const perfil = await this.authService.atualizarPerfil(usuario.id, dto);
+    return this.usuarioMapper.toResponse(perfil);
+  }
+
+  /** Só pra conta sem documento ainda (criada via Google) — depois de definido, vira imutável. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Patch("me/documento")
+  async completarDocumento(@CurrentUser() usuario: AuthenticatedUser, @Body() dto: CompletarDocumentoDto) {
+    const perfil = await this.authService.completarDocumento(usuario.id, dto);
     return this.usuarioMapper.toResponse(perfil);
   }
 

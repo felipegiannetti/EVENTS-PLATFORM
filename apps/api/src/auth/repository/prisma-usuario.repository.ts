@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Usuario } from "@prisma/client";
+import { apenasDigitos } from "@events-platform/shared-types";
 import { PrismaService } from "../../infra/prisma/prisma.service";
 import { criptografar, descriptografar, hashDeterministico } from "../../infra/crypto/campo-criptografado.util";
 import { UsuarioModel } from "../model/usuario.model";
@@ -16,11 +17,14 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
 
   async criar(data: CriarUsuarioData): Promise<UsuarioModel> {
     const chave = this.chave();
+    // Normalizado pra só dígitos antes de criptografar/hashear — "123.456.789-00" e "12345678900"
+    // não podem virar registros diferentes pro mesmo documento (quebraria a checagem de duplicidade).
+    const documento = data.documento ? apenasDigitos(data.documento) : undefined;
     const usuario = await this.prisma.usuario.create({
       data: {
         ...data,
-        documento: data.documento ? criptografar(data.documento, chave) : undefined,
-        documentoHash: data.documento ? hashDeterministico(data.documento, chave) : undefined,
+        documento: documento ? criptografar(documento, chave) : undefined,
+        documentoHash: documento ? hashDeterministico(documento, chave) : undefined,
       },
     });
     return this.toModel(usuario);
@@ -38,7 +42,7 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
 
   async buscarPorDocumento(documento: string): Promise<UsuarioModel | null> {
     const usuario = await this.prisma.usuario.findUnique({
-      where: { documentoHash: hashDeterministico(documento, this.chave()) },
+      where: { documentoHash: hashDeterministico(apenasDigitos(documento), this.chave()) },
     });
     return usuario ? this.toModel(usuario) : null;
   }

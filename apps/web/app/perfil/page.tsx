@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, HandCoins, IdCard, KeyRound, MapPin, ShieldCheck, Ticket, Trash2, User } from "lucide-react";
 import type { EventoResponse, MeuIngressoResponse, UsuarioResponse } from "@events-platform/shared-types";
-import { formatarLocalizacaoEvento, ROTULO_CATEGORIA_EVENTO, senhaEhForte, MENSAGEM_SENHA_FRACA } from "@events-platform/shared-types";
+import { formatarLocalizacaoEvento, ROTULO_CATEGORIA_EVENTO, senhaEhForte, MENSAGEM_SENHA_FRACA, validarCpfOuCnpj } from "@events-platform/shared-types";
 import { ProtectedPage } from "@/components/protected-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api-client";
-import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, deletarConta, reenviarConfirmacaoEmail } from "@/lib/auth-client";
-import { formatarDocumento, formatarTelefone } from "@/lib/formatters";
+import { alterarEmail, alterarSenha, atualizarPerfil, buscarPerfil, completarDocumento, deletarConta, reenviarConfirmacaoEmail } from "@/lib/auth-client";
+import { formatarCpfOuCnpj, formatarDocumento, formatarTelefone } from "@/lib/formatters";
 import { listarEventos } from "@/lib/events-client";
 import { listarMeusIngressos } from "@/lib/tickets-client";
 import { useAuth } from "@/lib/auth-context";
@@ -158,14 +158,10 @@ function SecaoDados({
   }
 
   return (
-    <Card className="p-6">
+    <div className="flex flex-col gap-6">
+      {!perfil.documento && <CompletarDocumentoCard token={token} onCompletado={onAtualizado} />}
+      <Card className="p-6">
       <h2 className="section-title !text-base">Dados da conta</h2>
-      {!perfil.documento && (
-        <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-warning/10 px-3 py-2.5 text-xs leading-5 text-warning">
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          Sua conta foi criada com o Google e ainda não tem CPF/CNPJ cadastrado — algumas funcionalidades (como criar eventos pagos) podem exigir completar esse dado. Fale com o suporte pra atualizar.
-        </p>
-      )}
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-5">
         <Input
           id="nome"
@@ -200,15 +196,94 @@ function SecaoDados({
           value={telefone}
           onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
         />
-        <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted">
-          <IdCard size={13} /> {perfil.tipoPessoa === "fisica" ? "CPF" : "CNPJ"} não pode ser alterado — é o documento que identifica sua conta.
-        </p>
+        {perfil.documento && (
+          <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted">
+            <IdCard size={13} /> {perfil.tipoPessoa === "fisica" ? "CPF" : "CNPJ"} não pode ser alterado — é o documento que identifica sua conta.
+          </p>
+        )}
         {erro && <p className="text-sm text-danger">{erro}</p>}
         {sucesso && <p className="text-sm text-success">Dados atualizados.</p>}
         <Button type="submit" loading={salvando} className="w-full sm:w-fit">
           Salvar alterações
         </Button>
       </form>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Só aparece pra conta criada via Google sem CPF/CNPJ ainda. Sem seletor PF/PJ de propósito —
+ * `formatarCpfOuCnpj` troca a máscara sozinha ao passar de 11 dígitos, e o backend infere
+ * `tipoPessoa` do mesmo jeito. Uma vez salvo, o documento vira imutável (mesmo endpoint recusa
+ * sobrescrever).
+ */
+function CompletarDocumentoCard({ token, onCompletado }: { token: string; onCompletado: (p: UsuarioResponse) => void }) {
+  const [documento, setDocumento] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const digitos = documento.replace(/\D/g, "");
+  const provavelPessoaFisica = digitos.length <= 11;
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    if (!validarCpfOuCnpj(documento)) {
+      setErro(digitos.length > 11 ? "CNPJ inválido — confira os números." : "CPF inválido — confira os números.");
+      return;
+    }
+    setSalvando(true);
+    try {
+      const atualizado = await completarDocumento(
+        { documento, dataNascimento: provavelPessoaFisica ? dataNascimento || undefined : undefined },
+        token,
+      );
+      onCompletado(atualizado);
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Não foi possível salvar o documento.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Card className="border-warning/20 bg-warning/5 p-6">
+      <h2 className="flex items-center gap-2 text-base font-semibold text-warning">
+        <AlertTriangle size={16} /> Complete seu cadastro
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        Sua conta foi criada com o Google e ainda não tem CPF/CNPJ — algumas funcionalidades (como criar eventos) exigem esse dado. Informe abaixo pra completar.
+      </p>
+      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <Input
+            id="documentoCompletar"
+            label="CPF ou CNPJ"
+            required
+            placeholder="000.000.000-00"
+            value={formatarCpfOuCnpj(documento)}
+            onChange={(e) => setDocumento(e.target.value)}
+          />
+        </div>
+        {provavelPessoaFisica && (
+          <div className="flex-1">
+            <Input
+              id="dataNascimentoCompletar"
+              label="Data de nascimento"
+              type="date"
+              required
+              value={dataNascimento}
+              onChange={(e) => setDataNascimento(e.target.value)}
+            />
+          </div>
+        )}
+        <Button type="submit" loading={salvando} className="sm:w-fit">
+          Salvar
+        </Button>
+      </form>
+      {erro && <p className="mt-3 text-sm text-danger">{erro}</p>}
     </Card>
   );
 }

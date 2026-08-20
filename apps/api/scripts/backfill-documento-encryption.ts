@@ -5,6 +5,7 @@
  * Idempotente: só toca linhas cujo valor ainda não parece ciphertext (sem os dois pontos esperados).
  */
 import { PrismaClient } from "@prisma/client";
+import { apenasDigitos } from "@events-platform/shared-types";
 import { criptografar, hashDeterministico } from "../src/infra/crypto/campo-criptografado.util";
 
 const prisma = new PrismaClient();
@@ -25,11 +26,12 @@ async function main() {
   let usuariosMigrados = 0;
   for (const usuario of usuarios) {
     if (!usuario.documento || pareceCiphertext(usuario.documento)) continue;
+    const documento = apenasDigitos(usuario.documento);
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: {
-        documento: criptografar(usuario.documento, chaveDocumento),
-        documentoHash: hashDeterministico(usuario.documento, chaveDocumento),
+        documento: criptografar(documento, chaveDocumento),
+        documentoHash: hashDeterministico(documento, chaveDocumento),
       },
     });
     usuariosMigrados++;
@@ -44,7 +46,7 @@ async function main() {
     if (!ingresso.compradorDocumento || pareceCiphertext(ingresso.compradorDocumento)) continue;
     await prisma.ingresso.update({
       where: { id: ingresso.id },
-      data: { compradorDocumento: criptografar(ingresso.compradorDocumento, chaveDocumento) },
+      data: { compradorDocumento: criptografar(apenasDigitos(ingresso.compradorDocumento), chaveDocumento) },
     });
     ingressosMigrados++;
   }
